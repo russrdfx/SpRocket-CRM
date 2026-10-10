@@ -93,3 +93,15 @@ The canonical repository is [SpRocket-CRM](https://github.com/russrdfx/SpRocket-
 Connect Google or Microsoft from **Inbox** or **Configuration → Integrations / Inboxes**. Setup instructions, supported scopes, privacy controls and limitations are in [EMAIL.md](EMAIL.md). Recent-message sync is manual and bounded. Sync automatically logs messages on contacts and linked deals, creates missing contacts, and links domain-based companies. The cache is owner-scoped under SSO; local demo mail is available to anyone using the local workspace. Provider registration and real-account integration checks remain necessary.
 
 The email update passed 45 automated tests covering existing CRM/SSO behavior and mocked email-provider flows, including automatic record creation, activity deduplication, encrypted credentials, account ownership and send safeguards. Real-provider verification is still required.
+
+## Create and edit records
+
+The top **Create** dropdown opens Contact, Company, Deal, Ticket or Task in a right-side panel. Custom record types also appear. Record-list Create buttons use the same panels; edit keeps existing values and activity logging. Sticky actions include Create, Create and add another, Cancel, and Save for edits. Associations use searchable checkboxes instead of a multiple-selection list.
+
+Contacts collect email, first/last name, owner, job title, phone, lifecycle stage and lead status. Companies collect domain/name, owner, industry/type, location, headcount, revenue, time zone, description and LinkedIn URL. Deals collect pipeline/stage, amount/date, owner/type/priority, relationships and description/quantity/price line items. A blank deal amount is calculated from its line items; an explicit amount is preserved. Tickets collect name, pipeline/status, description, source, owner, priority and create date. Tasks collect title, type, priority, relationships, assignee, queue, due date/time, reminder/repeat preferences and notes.
+
+Task reminder/repeat preferences are stored; automated notifications and recurring-task generation remain planned. Deal line items are saved data; a product catalog, quotes and invoicing remain planned. Pipelines are required when available, with a no-pipeline path for an unconfigured workspace. Contact names can be derived from first/last name or email; company names can be derived from domain.
+
+New default properties are added once without overwriting custom definitions or existing records. Configure labels/options and add custom properties through **Configure properties**. Later user removal of a default property is respected after the migration.
+
+Record creation update validation: 48 automated tests pass. Browser checks verified the dropdown, task/company/deal panels, contact name derivation, saved line items, calculated amount and Create and add another. Temporary verification records were removed.

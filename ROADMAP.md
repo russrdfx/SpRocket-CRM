@@ -15,6 +15,10 @@ Local persistent record management, generic typed fields, configurable record ty
 
 Google and Microsoft personal inbox adapters now share a connection UI, encrypted tokens, manual bounded message import, plain-text compose/reply, signatures, contact/deal matching, automatic contact/domain-company creation and shared activity logging and follow-up tasks. See [EMAIL.md](EMAIL.md). Live-provider registration and consent tests remain required. Next email work: background incremental sync, attachments, richer composition, shared inboxes and assignment.
 
+## Record creation delivered
+
+Create dropdown and type-specific side panels for contacts, companies, deals, tickets and tasks, with searchable associations, custom fields, create-and-add-another, additive property migration and editable deal line items. Tasks store queue, due time and reminder/repeat preferences; automated scheduling and notifications remain future work.
+
 ## Next releases
 
 1. Production foundation: expanded identity management, roles, workspaces, audit history, migrations, backups, PostgreSQL deployment and container packaging. Enforce workspace isolation in every API operation.

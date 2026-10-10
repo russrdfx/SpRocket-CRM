@@ -1,5 +1,6 @@
 """Sprocket CRM local development server. Python 3.9+, no dependencies."""
 import json
+import math
 import os
 import sqlite3
 import uuid
@@ -9,6 +10,7 @@ from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 from auth import OIDC
 import sso_config
+import record_forms
 from mail_service import MailService, MailError
 
 AUTH = OIDC()
@@ -44,6 +46,9 @@ def initialize():
                 ('tickets', 'Tickets', [{'key': 'priority', 'label': 'Priority', 'type': 'select', 'options': ['Low', 'Medium', 'High', 'Urgent']}])]
             settings = {'name': 'Sprocket CRM', 'currency': 'USD', 'types': [{'id': k, 'name': n, 'fields': f} for k, n, f in kinds], 'pipelines': [], 'owners': []}
             db.execute('INSERT INTO settings VALUES (1, ?)', (json.dumps(settings),))
+        settings = load_settings(db)
+        if record_forms.upgrade(settings):
+            db.execute('UPDATE settings SET body=? WHERE id=1', (json.dumps(settings),))
 
 
 def load_settings(db):
@@ -116,6 +121,17 @@ def validate_record(db, kind, body):
             raise ValueError('Invalid option for ' + field['label'])
         if field['type'] == 'date':
             datetime.strptime(value, '%Y-%m-%d')
+    if kind == 'deals' and 'line_items' in body:
+        items = body['line_items']
+        if not isinstance(items, list) or len(items)>100:
+            raise ValueError('Use up to 100 deal line items.')
+        for item in items:
+            if not isinstance(item, dict) or not str(item.get('description','')).strip():
+                raise ValueError('Line items require a description.')
+            for key in ('quantity','unit_price'):
+                value = item.get(key)
+                if isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(value) or value<0 or (key=='quantity' and value==0):
+                    raise ValueError('Line item quantity must be positive and unit price cannot be negative.')
     links = body.get('links', [])
     if not isinstance(links, list):
         raise ValueError('Relationships must be a list.')
@@ -207,7 +223,7 @@ class Handler(BaseHTTPRequestHandler):
                 records = [dict(json.loads(r['body']), id=r['id'], kind=r['kind'], updated=r['updated']) for r in db.execute('SELECT * FROM records ORDER BY updated DESC')]
                 activities = [dict(json.loads(r['body']), id=r['id'], record_id=r['record_id'], created=r['created']) for r in db.execute('SELECT * FROM activities ORDER BY created DESC')]
                 return self.reply(200, {'settings': load_settings(db), 'records': records, 'activities': activities})
-        file = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/login': 'login.html', '/login.js': 'login.js', '/mail.js': 'mail.js'}.get(path)
+        file = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/login': 'login.html', '/login.js': 'login.js', '/mail.js': 'mail.js', '/create.js': 'create.js'}.get(path)
         if path.startswith('/assets/brand/'):
             candidate = (ROOT / 'web' / path.lstrip('/')).resolve()
             asset_root = (ROOT / 'web/assets/brand').resolve()
