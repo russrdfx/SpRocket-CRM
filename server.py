@@ -167,7 +167,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.redirect('/', [cookie, AUTH.cookie('sprocket_login', '', 0)])
             except Exception:
                 return self.reply(401, {'error': 'Sign-in failed or this identity is not allowed. Start a new login.'})
-        if AUTH.enabled and not AUTH.user(self.headers) and path not in ('/login', '/style.css', '/login.js'):
+        if AUTH.enabled and not AUTH.user(self.headers) and path not in ('/login', '/style.css', '/login.js') and not path.startswith('/assets/brand/'):
             if path.startswith('/api/'):
                 return self.reply(401, {'error': 'Sign-in required'})
             return self.redirect('/login')
@@ -181,11 +181,16 @@ class Handler(BaseHTTPRequestHandler):
                 activities = [dict(json.loads(r['body']), id=r['id'], record_id=r['record_id'], created=r['created']) for r in db.execute('SELECT * FROM activities ORDER BY created DESC')]
                 return self.reply(200, {'settings': load_settings(db), 'records': records, 'activities': activities})
         file = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/login': 'login.html', '/login.js': 'login.js'}.get(path)
+        if path.startswith('/assets/brand/'):
+            candidate = (ROOT / 'web' / path.lstrip('/')).resolve()
+            asset_root = (ROOT / 'web/assets/brand').resolve()
+            if asset_root in candidate.parents and candidate.is_file() and candidate.suffix in ('.svg', '.png'):
+                file = str(candidate.relative_to(ROOT / 'web'))
         if not file:
             return self.reply(404, {'error': 'Not found'})
         raw = (ROOT / 'web' / file).read_bytes()
         self.send_response(200)
-        self.send_header('Content-Type', {'html': 'text/html', 'js': 'text/javascript', 'css': 'text/css'}[file.split('.')[-1]])
+        self.send_header('Content-Type', {'html': 'text/html', 'js': 'text/javascript', 'css': 'text/css', 'svg': 'image/svg+xml', 'png': 'image/png'}[file.split('.')[-1]])
         self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; frame-ancestors 'none'")
         self.send_header('X-Content-Type-Options', 'nosniff')
         self.send_header('Content-Length', str(len(raw)))

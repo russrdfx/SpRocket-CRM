@@ -1,3 +1,5 @@
+![SpRocket full-color icon](web/assets/brand/icons/sprocket-symbol-color.png)
+
 # Sprocket CRM
 
 A free, MIT-licensed, configurable CRM foundation.
@@ -78,3 +80,7 @@ Tests cover empty initialization, custom pipelines, persistent records, invalid 
 ## License
 
 MIT. See LICENSE.
+
+## Brand assets
+
+The supplied SpRocket vector logos, full-color symbol, monochrome variants, favicon and app icons are in `web/assets/brand/`. The app uses the dark horizontal logo in navigation, the light logo on sign-in, and the full-color favicon. The blue, orange and navy palette is applied to primary brand surfaces and accents. See [brand guide](web/assets/brand/guidelines/BRAND-GUIDE.md) for the supplied asset status and usage guidance. Selected PNG fallbacks are included alongside the vector library.
