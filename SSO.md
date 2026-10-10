@@ -49,3 +49,7 @@ Sprocket supports a single configurable OIDC provider and one shared workspace. 
 Tests use fictional identities and locally generated RSA keys. They cover session revocation and expiry, invalid token claims, browser binding, login replay rejection, startup configuration, anonymous API rejection and cross-origin write protection, alongside the CRM tests. Provider exchanges are mocked; a real provider login remains a required integration check for your deployment.
 
 Protocol references: [OpenID Connect Core](https://www.openid.net/specs/openid-connect-core-1_0.html), [PyJWT API](https://pyjwt.readthedocs.io/en/latest/api.html).
+
+## Desktop installation
+
+The desktop app uses port 18765 and system-browser authorization. Provider setup, private local configuration and callback URLs are documented in [DESKTOP.md](DESKTOP.md).

@@ -9,11 +9,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 from auth import OIDC
+from desktop_bridge import DesktopBridge
 import sso_config
 import record_forms
 from mail_service import MailService, MailError
 
 AUTH = OIDC()
+DESKTOP = DesktopBridge()
 
 ROOT = Path(__file__).parent
 DB = Path(os.environ.get('SPROCKET_DB', str(ROOT / 'data' / 'sprocket.db')))
@@ -181,6 +183,34 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = urlparse(self.path).path
+        if path == '/api/desktop/health':
+            if not DESKTOP.trusted(self.headers):
+                return self.reply(403, {'error': 'Desktop access required'})
+            return self.reply(200, {'ready': True})
+        if path == '/api/desktop/login':
+            if not DESKTOP.trusted(self.headers) or not AUTH.enabled:
+                return self.reply(403, {'error': 'Desktop access required'})
+            ticket = DESKTOP.create(kind='login')
+            return self.reply(200, {'ticket': ticket})
+        if path == '/api/desktop/result':
+            if not DESKTOP.trusted(self.headers):
+                return self.reply(403, {'error': 'Desktop access required'})
+            return self.reply(200, DESKTOP.result(parse_qs(urlparse(self.path).query).get('ticket', [''])[0]))
+        if path == '/desktop/start' and DESKTOP.token:
+            try:
+                ticket = parse_qs(urlparse(self.path).query).get('ticket', [''])[0]
+                item = DESKTOP.consume_start(ticket)
+                if item['kind'] == 'login':
+                    location, cookie = AUTH.begin()
+                    state = parse_qs(urlparse(location).query)['state'][0]
+                    with AUTH.lock:
+                        AUTH.pending[state]['desktop_ticket'] = ticket
+                    return self.redirect(location, [cookie])
+                return self.redirect(item['location'], item['cookies'])
+            except Exception:
+                return self.reply(400, {'error': 'Sign-in expired. Start again from the desktop app.'})
+        if path == '/desktop/done' and DESKTOP.token:
+            return self.reply(200, {'message': 'Sign-in complete. Return to SpRocket CRM.'})
         if path == '/api/auth':
             return self.reply(200, {'enabled': AUTH.enabled, 'user': AUTH.user(self.headers) if AUTH.enabled else None, 'is_admin': self.sso_admin()})
         if path == '/auth/login' and AUTH.enabled:
@@ -191,7 +221,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(503, {'error': 'Sign-in is unavailable. Check provider configuration.'})
         if path == '/auth/callback' and AUTH.enabled:
             try:
-                cookie = AUTH.finish(parse_qs(urlparse(self.path).query), self.headers)
+                query = parse_qs(urlparse(self.path).query)
+                with AUTH.lock:
+                    ticket = AUTH.pending.get(query.get('state', [''])[0], {}).get('desktop_ticket')
+                cookie = AUTH.finish(query, self.headers)
+                if ticket:
+                    DESKTOP.complete(ticket, cookie)
+                    return self.redirect('/desktop/done', [cookie, AUTH.cookie('sprocket_login', '', 0)])
                 return self.redirect('/', [cookie, AUTH.cookie('sprocket_login', '', 0)])
             except Exception:
                 return self.reply(401, {'error': 'Sign-in failed or this identity is not allowed. Start a new login.'})
@@ -270,6 +306,13 @@ class Handler(BaseHTTPRequestHandler):
                 owner = self.mail_owner()
                 if action == 'connect':
                     location, cookie = MAIL.begin(data.get('provider'), owner)
+                    if DESKTOP.trusted(self.headers):
+                        cookies = [cookie]
+                        session = AUTH.cookie_value(self.headers, 'sprocket_session')
+                        if session:
+                            cookies.append(AUTH.cookie('sprocket_session', session, 600))
+                        ticket = DESKTOP.create(kind='mail', location=location, cookies=cookies)
+                        location = '/desktop/start?ticket=' + ticket
                     return self.reply(200, {'url': location}, [cookie])
                 return self.reply(200, MAIL.post(action, owner, data))
 
@@ -323,7 +366,15 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--backup', metavar='DESTINATION')
+    args = parser.parse_args()
     initialize()
+    if args.backup:
+        with connect() as source, sqlite3.connect(args.backup) as target:
+            source.backup(target)
+        raise SystemExit(0)
     port = int(os.environ.get('PORT', '8765'))
     print('Sprocket CRM: http://127.0.0.1:' + str(port), flush=True)
     ThreadingHTTPServer(('127.0.0.1', port), Handler).serve_forever()

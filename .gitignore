@@ -7,3 +7,7 @@ node_modules/
 dist/
 *.pem
 *.key
+desktop/backend/
+desktop/build/
+
+.desktop-venv/

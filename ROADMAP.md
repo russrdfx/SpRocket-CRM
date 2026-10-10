@@ -31,3 +31,9 @@ Create dropdown and type-specific side panels for contacts, companies, deals, ti
 8. Reporting: configurable dashboards, funnels, conversion/cohort reports, attribution and activity metrics.
 
 No premium-feature gates are planned for the open-source core. External email, calling and payment services may have their own costs. Feature availability in a reference account does not determine Sprocket's requirements. Features that were not exposed through MCP require independent product design; inspection is not evidence of complete parity.
+
+## Desktop distribution
+
+Implemented: Electron launcher, bundled Python backend, Apple Silicon Mac DMG build, separate persistent data directory, single-instance behavior, server ownership checks, native database backup and system-browser sign-in handoffs. See [DESKTOP.md](DESKTOP.md).
+
+Next: signed/notarized Mac releases, clean-machine and live-provider testing, Intel Mac and Windows packaging, and automatic updates.

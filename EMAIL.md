@@ -84,3 +84,7 @@ Disconnect removes local credentials; it does not revoke the provider grant. Rev
 ## Verification status
 
 Automated tests mock provider responses and cover state/browser/owner checks, PKCE parameters, scopes, token encryption and refresh rotation, private cache isolation, message matching, automatic contact/domain company creation, sync upserts, activity/task deduplication, MIME replies, both sending adapters, redirect rejection and duplicate/uncertain sends. Real Google and Microsoft consent, sync and delivery must be verified using registered apps and consenting test accounts before operational use. No real mailbox has been connected or message sent by the implementation tests.
+
+## Desktop installation
+
+The desktop app uses port 18765 and system-browser authorization. Provider setup, private local configuration and callback URLs are documented in [DESKTOP.md](DESKTOP.md).

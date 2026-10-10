@@ -4,6 +4,12 @@
 
 A free, MIT-licensed, configurable CRM foundation.
 
+## Desktop app
+
+[Download the unsigned Apple Silicon Mac pre-release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/v0.1.0). Extract the ZIP and move the application into Applications.
+
+An Apple Silicon Mac desktop installer now bundles the CRM and Python server, uses the full-color SpRocket icon, and keeps data outside the app. The first build is unsigned for development. See [desktop installation, backups and build instructions](DESKTOP.md). Windows, Intel Mac and signed public releases remain planned.
+
 ## Run locally
 
 Requires Python 3.9 or later. The local demo needs no packages. Optional SSO and email integrations require the dependencies in [SSO setup](SSO.md).

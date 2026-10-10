@@ -1,0 +1,51 @@
+{
+  "name": "sprocket-crm-desktop",
+  "version": "0.1.0",
+  "description": "SpRocket CRM desktop application",
+  "author": "SpRocket CRM contributors",
+  "license": "MIT",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "build:backend": "python3 scripts/build_backend.py",
+    "build:mac": "electron-builder --mac dmg --arm64 --publish never",
+    "build:dir": "electron-builder --mac dir --arm64 --publish never",
+    "build:mac:zip": "electron-builder --mac zip --arm64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "44.7.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.sprocket.crm",
+    "productName": "SpRocket CRM",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.cjs",
+      "assets/icon.png",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "backend/sprocket-server",
+        "to": "backend",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.business",
+      "icon": "assets/icon.png",
+      "identity": null,
+      "target": "dmg"
+    },
+    "dmg": {
+      "title": "SpRocket CRM",
+      "sign": false
+    },
+    "artifactName": "SpRocket-CRM-${version}-${arch}.${ext}"
+  }
+}
