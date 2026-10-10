@@ -85,4 +85,4 @@ MIT. See LICENSE.
 
 The supplied SpRocket vector logos, full-color symbol, monochrome variants, favicon and app icons are in `web/assets/brand/`. The app uses the dark horizontal logo in navigation, the light logo on sign-in, and the full-color favicon. The blue, orange and navy palette is applied to primary brand surfaces and accents. See [brand guide](web/assets/brand/guidelines/BRAND-GUIDE.md) for the supplied asset status and usage guidance. Selected PNG fallbacks are included alongside the vector library.
 
-The canonical repository is [SpRocket-CRM](https://github.com/russrdfx/SpRocket-CRM). Its GitHub social preview uses the full-color logo with a 1280 × 640 canvas; editable vector and PNG versions are included in the logo directory. GitHub displays the owner's avatar beside repository names and does not provide a separate repository avatar.
+The canonical repository is [SpRocket-CRM](https://github.com/russrdfx/SpRocket-CRM). Its GitHub social preview uses the full-color logo with a 1280 × 640 canvas; editable vector and PNG versions are included in the logo directory.
