@@ -1,6 +1,6 @@
 # Sprocket CRM
 
-A free, MIT-licensed, configurable CRM foundation. No HubSpot connection, account configuration, or customer data is included.
+A free, MIT-licensed, configurable CRM foundation.
 
 ## Run locally
 
@@ -46,7 +46,7 @@ Adds 12 fictional records (3 contacts, 2 companies, 3 deals, 2 tasks and 2 ticke
 
 ## Current scope
 
-This is a local single-user development foundation, not a production deployment or full HubSpot replacement. It binds to loopback only. Owner names are assignment labels, not login accounts. Authentication, authorization, audit history, collaboration, backups, an automation engine, inbox synchronization, email delivery, marketing, quotes, invoicing and richer reporting remain roadmap work. Do not expose this development server publicly.
+This is a local single-user development foundation, not a production deployment or functional CRM replacement. It binds to loopback only. Owner names are assignment labels, not login accounts. Authentication, authorization, audit history, collaboration, backups, an automation engine, inbox synchronization, email delivery, marketing, quotes, invoicing and richer reporting remain roadmap work. Do not expose this development server publicly.
 
 ## Test
 
