@@ -37,3 +37,5 @@ No premium-feature gates are planned for the open-source core. External email, c
 Implemented: Electron launcher, bundled Python backend, Apple Silicon Mac DMG build, separate persistent data directory, single-instance behavior, server ownership checks, native database backup and system-browser sign-in handoffs. See [DESKTOP.md](DESKTOP.md).
 
 Next: signed/notarized Mac releases, clean-machine and live-provider testing, Intel Mac and Windows packaging, and automatic updates.
+
+Mac release validation now requires strict code-signature verification before and after ZIP extraction. v0.1.0 had invalid bundle integrity metadata; v0.1.1 adds ad-hoc development signing.

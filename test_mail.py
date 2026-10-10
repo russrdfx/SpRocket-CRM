@@ -21,6 +21,12 @@ class MailTest(unittest.TestCase):
         with app.connect() as db:
             db.execute('INSERT INTO records VALUES(?,?,?,?)',('contact','contacts',json.dumps({'name':'SAMPLE — Contact','email':'person@example.test','links':['deal']}),'2026-01-01'))
             db.execute('INSERT INTO records VALUES(?,?,?,?)',('deal','deals',json.dumps({'name':'SAMPLE — Deal','links':[]}),'2026-01-01'))
+    def import_mail(self):
+        data=dict(account_id='account',preset='30')
+        result=self.mail.preview(self.owner,data)
+        while not result['ready']:
+            result=self.mail.preview(self.owner,dict(account_id='account',import_id=result['import_id']))
+        return self.mail.sync(self.owner,'account',dict(import_id=result['import_id']))
     def tearDown(self):
         self.env.stop();app.DB=self.old_db;self.temp.cleanup()
     def account(self, provider='google', expires=0):
@@ -78,9 +84,9 @@ class MailTest(unittest.TestCase):
     def test_google_sync_upserts_and_automatically_logs(self):
         self.account(expires=time.time()+600)
         message={'id':'remote','payload':{'mimeType':'text/plain','headers':[{'name':'From','value':'person@example.test'}],'body':{'data':base64.urlsafe_b64encode(b'Sample mail').decode()}},'internalDate':'1000'}
-        def call(provider,token,path,*args):return {'messages':[{'id':'remote'}],'nextPageToken':'more'} if path.startswith('/messages?') else message
+        def call(provider,token,path,*args):return {'messages':[{'id':'remote'}]} if path.startswith('/messages?') else message
         with patch.object(self.mail,'call',side_effect=call):
-            self.assertTrue(self.mail.sync(self.owner,'account')['limited']);self.mail.sync(self.owner,'account')
+            self.assertTrue(self.import_mail()['done']);self.import_mail()
         with app.connect() as db:self.assertEqual(1,db.execute('SELECT count(*) FROM mail_messages').fetchone()[0]);self.assertEqual(2,db.execute('SELECT count(*) FROM activities').fetchone()[0])
     def test_sync_creates_contact_company_reuses_domain_and_excludes_own_address(self):
         self.account(expires=time.time()+600)
@@ -89,15 +95,15 @@ class MailTest(unittest.TestCase):
             if path.startswith('/messages?'):return {'messages':[{'id':m['id']} for m in messages]}
             return next(m for m in messages if '/messages/'+m['id']+'?' in path)
         with patch.object(self.mail,'call',side_effect=call):
-            result=self.mail.sync(self.owner,'account')
+            result=self.import_mail()
             self.assertEqual(2,result['contacts_created']);self.assertEqual(1,result['companies_created']);self.assertEqual(2,result['logged'])
-            result=self.mail.sync(self.owner,'account')
+            result=self.import_mail()
             self.assertEqual(0,result['contacts_created']);self.assertEqual(0,result['companies_created']);self.assertEqual(0,result['logged'])
         with app.connect() as db:
             contacts=[json.loads(r[0]) for r in db.execute("SELECT body FROM records WHERE kind='contacts'")]
             self.assertFalse(any(c.get('email')=='me@example.test' for c in contacts))
             created=[c for c in contacts if c.get('record_source')=='Email sync']
-            self.assertEqual(created[0]['links'],created[1]['links'])
+            self.assertEqual(created[0]['links'],created[1]['links']);self.assertTrue(all(c['owner']=='me@example.test' for c in created))
             company=json.loads(db.execute("SELECT body FROM records WHERE kind='companies'").fetchone()[0]);self.assertEqual('newco.example',company['domain'])
 
     def test_gmail_mime_reply_signature_and_no_duplicate_send(self):
@@ -134,6 +140,53 @@ class MailTest(unittest.TestCase):
         m=gmail_message({'id':'test','payload':{'parts':[{'mimeType':'text/plain','body':{'data':raw}},{'filename':'private.txt','mimeType':'text/plain','body':{'data':raw}}]},'internalDate':'1000'})
         self.assertEqual('Sample body',m['text'])
         self.assertEqual('Sample',microsoft_message({'id':'test','body':{'content':'Sample'}})['text'])
+
+    def test_preview_pages_and_imports_more_than_fifty_without_duplicates(self):
+        self.account(expires=time.time()+600)
+        calls=[]
+        def call(provider,token,path,*args):
+            calls.append(path)
+            if path.startswith('/messages?'):
+                if 'pageToken=' in path:return {'messages':[{'id':str(i)} for i in range(40,65)]}
+                return {'messages':[{'id':str(i)} for i in range(50)],'nextPageToken':'next'}
+            ident=path.split('/')[2].split('?')[0]
+            return {'id':ident,'payload':{'headers':[{'name':'From','value':'person@example.test'}]},'internalDate':'1000'}
+        with patch.object(self.mail,'call',side_effect=call):
+            data=dict(account_id='account',preset='custom',start='2026-01-01',end='2026-01-02')
+            first=self.mail.preview(self.owner,data);self.assertFalse(first['ready'])
+            with app.connect() as db:self.assertEqual(0,db.execute('SELECT count(*) FROM mail_messages').fetchone()[0])
+            data=dict(account_id='account',import_id=first['import_id'])
+            with self.assertRaises(MailError):self.mail.sync(self.owner,'account',data)
+            with self.assertRaises(MailError):self.mail.preview('other',data)
+            preview=self.mail.preview(self.owner,data);self.assertEqual(65,preview['count']);self.assertTrue(preview['ready'])
+            self.assertIn('after%3A',calls[1]);self.assertIn('before%3A',calls[1])
+            results=[]
+            while not results or not results[-1]['done']:results.append(self.mail.sync(self.owner,'account',dict(data,_crm_owner='Sample signed-in user')))
+            self.assertEqual([10,20,30,40,50,60,65],[r['count'] for r in results])
+            self.mail.sync(self.owner,'account',data)
+        with app.connect() as db:
+            self.assertEqual(65,db.execute('SELECT count(*) FROM mail_messages').fetchone()[0]);self.assertEqual(130,db.execute('SELECT count(*) FROM activities').fetchone()[0])
+        self.assertEqual('custom',self.mail.status(self.owner)['accounts'][0]['import_range']['preset'])
+
+    def test_dates_and_untrusted_microsoft_pagination(self):
+        for data in [dict(preset='all'),dict(preset='custom',start='bad',end='bad'),dict(preset='custom',start='2026-02-02',end='2026-01-01')]:
+            with self.assertRaises(MailError):self.mail.import_range(data)
+        self.account('microsoft',expires=time.time()+600)
+        with patch.object(self.mail,'call',return_value={'value':[],'@odata.nextLink':'https://attacker.example/v1.0/me/messages'}) as call:
+            with self.assertRaises(MailError):self.mail.preview(self.owner,dict(account_id='account',preset='7'))
+            self.assertEqual(1,call.call_count)
+
+    def test_failed_batch_retries_and_assigns_trusted_owner(self):
+        self.account(expires=time.time()+600)
+        with patch.object(self.mail,'call',return_value={'messages':[{'id':'new'}]}):preview=self.mail.preview(self.owner,dict(account_id='account',preset='7'))
+        data=dict(import_id=preview['import_id'],_crm_owner='Sample authenticated user')
+        with patch.object(self.mail,'call',side_effect=MailError('Try again')):
+            with self.assertRaises(MailError):self.mail.sync(self.owner,'account',data)
+        self.assertEqual(0,self.mail.imports[preview['import_id']]['index'])
+        with patch.object(self.mail,'call',return_value={'id':'new','payload':{'headers':[{'name':'From','value':'new@sample.test'}]},'internalDate':'1000'}):self.mail.sync(self.owner,'account',data)
+        with app.connect() as db:
+            bodies=[json.loads(r[0]) for r in db.execute("SELECT body FROM records WHERE kind='contacts'")]
+            self.assertEqual('Sample authenticated user',next(b for b in bodies if b.get('email')=='new@sample.test')['owner'])
 
 class MailHTTPTest(CRMTest):
     def test_mail_requires_origin_and_does_not_leak_missing_credentials(self):

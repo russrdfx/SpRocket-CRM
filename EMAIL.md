@@ -7,14 +7,14 @@ SpRocket supports Google / Gmail and Microsoft 365 / Outlook through a shared pe
 - Authorization-code connection with browser-bound state and PKCE S256.
 - Server-side token exchange and refresh, encrypted persisted tokens, and reconnect support.
 - Owner-scoped accounts and cached messages when SSO is enabled; CRM activity copies are shared automatically. Ownership includes the OIDC issuer and subject.
-- Manual import of up to 50 recent messages from a 7-, 30- or 90-day window. Search the local cache; oldest unlinked cached messages are pruned beyond 200.
+- Manual date-range imports: choose the last 7, 30 or 90 days, or inclusive custom dates (UTC), preview the matching message count, then press Import. Provider pages are processed in batches with progress and cancellation between batches. Re-importing does not duplicate CRM email activities. The selected range is saved for the next import; the inbox displays the 200 newest cached messages.
 - Plain-text viewing, compose, reply and signatures. Gmail preserves thread ID and reply headers; Microsoft uses Graph's reply endpoint.
 - Match contact email addresses and show deals linked to those contacts in either direction.
 - Sync automatically logs messages on matching contact/deal timelines, creates missing contacts and creates/links companies by correspondent email domain. Repeated sync does not duplicate contacts, domain companies or message activities. **Log on newly matched records** adds links discovered after sync.
 - Follow-up task creation with due date and matched record links. Repeating it returns the existing task.
 - Disconnect removes stored tokens and the account's message cache. Synced CRM logs, contacts, companies and follow-up tasks remain.
 
-This version does not run background sync, process webhooks/delta cursors, load all historical mail, render HTML, download attachments, edit/delete remote mail, support shared mailboxes, or offer multiple recipients, CC/BCC or rich-text composition. Up to 50 messages are refreshed each time; repeated sync does not page through older messages. Provider-accepted send is not proof of final delivery. Microsoft sent-message previews use a local identifier until sync retrieves the provider copy; those may appear twice in the cache.
+This version does not run background sync, process webhooks/delta cursors, render HTML, download attachments, edit/delete remote mail, support shared mailboxes, or offer multiple recipients, CC/BCC or rich-text composition. Imports page through all messages in the selected range. Preview jobs expire after one hour or a server restart; preview again to resume an interrupted import without duplicate activities. Provider-accepted send is not proof of final delivery. Microsoft sent-message previews use a local identifier until sync retrieves the provider copy; those may appear twice in the cache.
 
 ## Server prerequisites
 
@@ -88,3 +88,5 @@ Automated tests mock provider responses and cover state/browser/owner checks, PK
 ## Desktop installation
 
 The desktop app uses port 18765 and system-browser authorization. Provider setup, private local configuration and callback URLs are documented in [DESKTOP.md](DESKTOP.md).
+
+New contacts created during import are assigned to the signed-in CRM user. In local mode they are assigned to the connected email address. Existing contact owners are preserved. Connected email addresses and the current signed-in user are available in owner selectors. Click a contact property on its record to edit and Save or Cancel without opening the full edit dialog.

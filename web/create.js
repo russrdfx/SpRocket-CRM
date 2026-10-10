@@ -15,7 +15,7 @@ function creationDrawer(kind,record=null){
  const label=singularNames[kind]||typ.name,r=record||{kind,links:[]},modal=$('#modal'),pipes=state.settings.pipelines.filter(p=>p.kind===kind),isContact=kind==='contacts',isCompany=kind==='companies',process=['deals','tickets'].includes(kind)||pipes.length>0;
  if(!record){const defaults=kind==='tasks'?{task_type:'To-do',reminder_preference:'No reminder',repeat_preference:'Does not repeat'}:kind==='contacts'?{lifecycle_stage:'Lead'}:{};for(const [key,value] of Object.entries(defaults)){if(typ.fields.find(f=>f.key===key)?.options?.includes(value))r[key]=value}}
  let selected=new Set(r.links||[]),busy=false;
- const owners=[...new Set([...state.settings.owners,...(r.owner?[r.owner]:[])])];
+ const owners=ownerNames(r.owner);
  const ownerHTML=`<label for="create-owner">${kind==='tasks'?'Assigned to':esc(label)+' owner'}</label><select name="owner" id="create-owner"><option value="">Unassigned</option>${owners.map(o=>`<option ${o===r.owner?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
  const used=new Set();
  const prop=key=>{const f=typ.fields.find(f=>f.key===key);if(!f)return '';used.add(key);const formField={...f};if(kind==='companies'&&key==='domain'&&f.label==='Website')formField.label='Company domain name';const html=input(formField,r[key]);return `<div class="creation-property">${html}</div>`};

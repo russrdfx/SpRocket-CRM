@@ -80,6 +80,7 @@ class MailService:
     def __init__(self, connect):
         self.connect = connect
         self.pending = {}
+        self.imports = {}
         self.lock = threading.RLock()
 
     def initialize(self, db):
@@ -88,6 +89,7 @@ class MailService:
         CREATE TABLE IF NOT EXISTS mail_messages (id TEXT PRIMARY KEY, account_id TEXT NOT NULL REFERENCES mail_accounts(id) ON DELETE CASCADE, provider_id TEXT NOT NULL, body TEXT NOT NULL, UNIQUE(account_id,provider_id));
         CREATE TABLE IF NOT EXISTS mail_logs (message_id TEXT NOT NULL REFERENCES mail_messages(id) ON DELETE CASCADE, record_id TEXT NOT NULL REFERENCES records(id) ON DELETE CASCADE, PRIMARY KEY(message_id,record_id));
         CREATE TABLE IF NOT EXISTS mail_sends (owner TEXT NOT NULL, send_id TEXT NOT NULL, status TEXT NOT NULL, PRIMARY KEY(owner,send_id));
+        CREATE TABLE IF NOT EXISTS mail_ranges (account_id TEXT PRIMARY KEY REFERENCES mail_accounts(id) ON DELETE CASCADE, selection TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS mail_tasks (message_id TEXT PRIMARY KEY REFERENCES mail_messages(id) ON DELETE CASCADE, task_id TEXT NOT NULL REFERENCES records(id) ON DELETE CASCADE);
         ''')
 
@@ -123,6 +125,10 @@ class MailService:
             providers.append(dict(id=provider, label=meta['label'], ready=ready, reason=reason))
         with self.connect() as db:
             accounts = [dict(r) for r in db.execute('SELECT id,provider,email,signature,days,last_sync FROM mail_accounts WHERE owner=?', (owner,))]
+        with self.connect() as db:
+            for account in accounts:
+                row = db.execute('SELECT selection FROM mail_ranges WHERE account_id=?',(account['id'],)).fetchone()
+                account['import_range'] = json.loads(row[0]) if row else {'preset': str(account['days'])}
         return dict(providers=providers, accounts=accounts)
 
     def begin(self, provider, owner):
@@ -238,7 +244,7 @@ class MailService:
                 created_companies += 1
             if not matches:
                 ident = str(uuid.uuid4())
-                body = dict(name=display.strip()[:300] or address,email=address,links=[company],notes='Automatically created from a synced email correspondent.',record_source='Email sync')
+                body = dict(owner=account.get('crm_owner') or account['email'],name=display.strip()[:300] or address,email=address,links=[company],notes='Automatically created from a synced email correspondent.',record_source='Email sync')
                 db.execute('INSERT INTO records VALUES(?,?,?,?)',(ident,'contacts',json.dumps(body),now))
                 created_contacts += 1
             else:
@@ -276,23 +282,95 @@ class MailService:
                 m['logged_records'] = [r[0] for r in db.execute('SELECT record_id FROM mail_logs WHERE message_id=?',(m['id'],))]
             return sorted(messages, key=lambda m:m['date'], reverse=True)[:200]
 
-    def sync(self, owner, ident):
+    def import_range(self, data):
+        preset = str(data.get('preset', ''))
+        today = datetime.now(timezone.utc).date()
+        if preset in ('7', '30', '90'):
+            start, end = today-timedelta(days=int(preset)-1), today
+        elif preset == 'custom':
+            try:
+                start = datetime.strptime(data.get('start', ''), '%Y-%m-%d').date()
+                end = datetime.strptime(data.get('end', ''), '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                raise MailError('Choose valid start and end dates.') from None
+        else:
+            raise MailError('Choose 7, 30, 90 days or a custom date range.')
+        if start > end or end > today:
+            raise MailError('Start must be before end, and dates cannot be in the future.')
+        lower = datetime.combine(start, datetime.min.time(), timezone.utc)
+        upper = datetime.combine(end+timedelta(days=1), datetime.min.time(), timezone.utc)
+        return dict(preset=preset, start=start.isoformat(), end=end.isoformat()), lower, upper
+
+    def import_job(self, owner, data):
+        job = self.imports.get(data.get('import_id'))
+        if not job or job['owner'] != owner or job['account_id'] != data.get('account_id') or job['expires'] < time.time():
+            raise MailError('Import preview expired. Preview the date range again.')
+        return job
+
+    def preview(self, owner, data):
         with self.lock:
             with self.connect() as db:
-                account = self.account(db,owner,ident)
+                account = self.account(db, owner, data['account_id'])
             token, provider = self.access(account), account['provider']
-            if provider == 'google':
-                listing = self.call(provider,token,'/messages?'+urlencode(dict(maxResults=50,q='newer_than:'+str(account['days'])+'d -in:trash -in:spam')))
-                messages = [gmail_message(self.call(provider,token,'/messages/'+quote(m['id'],safe='')+'?format=full')) for m in listing.get('messages', [])]
-                truncated = bool(listing.get('nextPageToken'))
+            if data.get('import_id'):
+                job = self.import_job(owner, data)
             else:
-                since = (datetime.now(timezone.utc)-timedelta(days=account['days'])).strftime('%Y-%m-%dT%H:%M:%SZ')
-                params = {'$top':50,'$orderby':'receivedDateTime desc','$filter':'receivedDateTime ge '+since,'$select':'id,conversationId,subject,from,toRecipients,ccRecipients,body,receivedDateTime,sentDateTime,internetMessageId'}
-                listing = self.call(provider,token,'/me/messages?'+urlencode(params))
-                messages = [microsoft_message(m) for m in listing.get('value', [])]
-                for m in messages:
-                    if account['email'] in addresses(m['sender']): m['direction']='sent'
-                truncated = bool(listing.get('@odata.nextLink'))
+                selection, lower, upper = self.import_range(data)
+                if provider == 'google':
+                    params = dict(maxResults=500, q=f'after:{int(lower.timestamp())-1} before:{int(upper.timestamp())} -in:trash -in:spam')
+                    path = '/messages?'+urlencode(params)
+                else:
+                    stamp = lambda dt: dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+                    path = '/me/messages?'+urlencode({'$top':100,'$select':'id','$filter':f'receivedDateTime ge {stamp(lower)} and receivedDateTime lt {stamp(upper)}'})
+                self.imports = {k:v for k,v in self.imports.items() if v['expires'] > time.time()}
+                if len(self.imports) >= 100: raise MailError('Too many previews. Try again later.')
+                ident = secrets.token_urlsafe(32)
+                job = dict(id=ident, owner=owner, account_id=account['id'], selection=selection, path=path, ids=[], seen=set(), pages=set(), index=0, expires=time.time()+3600, contacts_created=0, companies_created=0, logged=0)
+                self.imports[ident] = job
+            if job['path']:
+                path = job['path']
+                if path in job['pages']: raise MailError('Provider repeated a page. Preview again.')
+                listing = self.call(provider, token, path)
+                rows = listing.get('messages' if provider == 'google' else 'value', [])
+                for row in rows:
+                    if row['id'] not in job['seen']:
+                        job['ids'].append(row['id']); job['seen'].add(row['id'])
+                job['pages'].add(path)
+                if provider == 'google':
+                    next_token = listing.get('nextPageToken')
+                    job['path'] = ''
+                    if next_token:
+                        from urllib.parse import parse_qs
+                        params = {k:v[0] for k,v in parse_qs(urlparse(path).query).items()}
+                        params['pageToken'] = next_token
+                        job['path'] = '/messages?'+urlencode(params)
+                else:
+                    link = listing.get('@odata.nextLink', '')
+                    if link:
+                        u = urlparse(link)
+                        if u.scheme != 'https' or u.netloc != 'graph.microsoft.com' or u.path != '/v1.0/me/messages' or u.fragment:
+                            raise MailError('Invalid provider pagination link.')
+                        job['path'] = u.path[len('/v1.0'):]+('?' + u.query if u.query else '')
+                    else: job['path'] = ''
+            return dict(import_id=job['id'], count=len(job['ids']), ready=not job['path'], selection=job['selection'])
+
+    def sync(self, owner, ident, data=None):
+        with self.lock:
+            job = self.import_job(owner, dict(data or {}, account_id=ident))
+            if job['path']: raise MailError('Finish previewing the range before importing.')
+            with self.connect() as db:
+                account = self.account(db,owner,ident)
+            account['crm_owner'] = (data or {}).get('_crm_owner') or account['email']
+            token, provider = self.access(account), account['provider']
+            ids = job['ids'][job['index']:job['index']+10]
+            messages = []
+            for remote_id in ids:
+                path = ('/messages/' if provider == 'google' else '/me/messages/')+quote(remote_id,safe='')
+                if provider == 'google': path += '?format=full'
+                message = self.call(provider, token, path)
+                m = gmail_message(message) if provider == 'google' else microsoft_message(message)
+                if provider == 'microsoft' and account['email'] in addresses(m['sender']): m['direction']='sent'
+                messages.append(m)
             now = datetime.now(timezone.utc).isoformat()
             contacts_created = companies_created = logged = 0
             with self.connect() as db:
@@ -304,9 +382,11 @@ class MailService:
                     contacts_created += c; companies_created += co
                     logged += self.log_message(db,m)
                 db.execute('UPDATE mail_accounts SET last_sync=? WHERE id=?',(now,ident))
-                # Keep the personal cache bounded, retain messages deliberately linked to tasks/logs.
-                db.execute('DELETE FROM mail_messages WHERE account_id=? AND id NOT IN (SELECT id FROM mail_messages WHERE account_id=? ORDER BY json_extract(body,\'$.date\') DESC LIMIT 200) AND id NOT IN (SELECT message_id FROM mail_logs) AND id NOT IN (SELECT message_id FROM mail_tasks)',(ident,ident))
-            return dict(ok=True,count=len(messages),limited=truncated,contacts_created=contacts_created,companies_created=companies_created,logged=logged)
+                db.execute('INSERT INTO mail_ranges VALUES(?,?) ON CONFLICT(account_id) DO UPDATE SET selection=excluded.selection',(ident,json.dumps(job['selection'])))
+            job['index'] += len(ids)
+            for key, value in [('contacts_created',contacts_created),('companies_created',companies_created),('logged',logged)]: job[key] += value
+            job['expires'] = time.time()+3600
+            return dict(ok=True,count=job['index'],total=len(job['ids']),done=job['index']==len(job['ids']),contacts_created=job['contacts_created'],companies_created=job['companies_created'],logged=job['logged'])
 
     def message(self, db, owner, ident):
         row = db.execute('SELECT m.* FROM mail_messages m JOIN mail_accounts a ON a.id=m.account_id WHERE m.id=? AND a.owner=?',(ident,owner)).fetchone()
@@ -386,7 +466,8 @@ class MailService:
             return dict(ok=True,message_id=ident,message='Provider accepted the message. Delivery is not guaranteed; see Sent mail.')
 
     def post(self, action, owner, data):
-        if action == 'sync': return self.sync(owner,data['account_id'])
+        if action == 'preview': return self.preview(owner,data)
+        if action == 'sync': return self.sync(owner,data['account_id'],data)
         if action == 'send': return self.send(owner,data)
         if action == 'log': return self.log(owner,data['message_id'])
         if action == 'task': return self.task(owner,data)

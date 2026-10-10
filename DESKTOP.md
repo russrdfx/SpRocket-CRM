@@ -69,3 +69,19 @@ For an isolated test workspace, set `SPROCKET_DESKTOP_DATA_DIR` to an absolute d
 The locked packaging toolchain currently reports eight moderate development dependency audit findings associated with the builder's download tooling. These dependencies are excluded from the installed application. Review available upstream fixes before public release; do not force a downgrade that introduces more severe dependency findings.
 
 Verified for the initial ZIP: 52 automated Python tests, launcher syntax, packaged backend startup and static assets, launcher-only health checks, live SQLite backup integrity, visible packaged CRM launch, server shutdown after app quit, ZIP integrity, and absence of databases or private keys from the archive. Live provider sign-in and clean-machine installation remain unverified.
+
+## v0.1.1 packaging correction
+
+The v0.1.0 ZIP failed macOS signature integrity verification after download. It must not be treated as an installable release. The v0.1.1 build uses an explicit ad-hoc development signature (`identity: "-"`) instead of skipping signing. This repairs integrity metadata without claiming a verified developer identity. Developer ID signing and notarization remain required for normal public distribution. Gatekeeper may still block this development build; do not remove quarantine attributes or disable Gatekeeper as a packaging workaround.
+
+Before publishing any new Mac artifact, require `codesign --verify --deep --strict --verbose=2` on the bundle and again on a fresh extraction of its ZIP. This checks integrity, not notarization or clean-machine installability.
+
+The packaging hook removes only Finder information and resource-fork metadata from generated bundles before signing, because these attributes cause code-signature creation to fail. It preserves quarantine and other security attributes. ZIP builds run fresh-extraction signature verification automatically.
+
+Cloud-backed folders can restore Finder metadata during signing. If this occurs, build into an ordinary local temporary folder using `--config.directories.output=/private/tmp/sprocket-build` and verify a ZIP extracted into a temporary local folder. Copy the finished ZIP to its distribution location after verification.
+
+v0.1.1 verification: strict signature integrity passed for the built app and a fresh ZIP extraction; the corrected application displayed the CRM and the test instance was closed. Developer ID and notarization are still absent, and Gatekeeper approval from a browser-downloaded copy remains unverified.
+
+## 0.1.2
+
+Adds date-range email import previews and batched imports, automatic ownership for newly imported contacts, owner choices for the signed-in user and connected inbox addresses, and direct contact property editing. Existing CRM data and assigned contact owners are retained. This local build has not been published as a GitHub release.

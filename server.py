@@ -314,6 +314,8 @@ class Handler(BaseHTTPRequestHandler):
                         ticket = DESKTOP.create(kind='mail', location=location, cookies=cookies)
                         location = '/desktop/start?ticket=' + ticket
                     return self.reply(200, {'url': location}, [cookie])
+                user = AUTH.user(self.headers) if AUTH.enabled else None
+                data['_crm_owner'] = user['name'] if user else None
                 return self.reply(200, MAIL.post(action, owner, data))
 
             if path in ('/api/sso', '/api/sso/test'):

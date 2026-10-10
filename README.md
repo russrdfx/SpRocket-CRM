@@ -6,7 +6,7 @@ A free, MIT-licensed, configurable CRM foundation.
 
 ## Desktop app
 
-[Download the unsigned Apple Silicon Mac pre-release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/v0.1.0). Extract the ZIP and move the application into Applications.
+**Mac download status:** the v0.1.0 pre-release has a signature integrity packaging defect. A local v0.1.1 development correction passes signature integrity verification and launches; Developer ID signing and notarization remain planned.
 
 An Apple Silicon Mac desktop installer now bundles the CRM and Python server, uses the full-color SpRocket icon, and keeps data outside the app. The first build is unsigned for development. See [desktop installation, backups and build instructions](DESKTOP.md). Windows, Intel Mac and signed public releases remain planned.
 
@@ -111,3 +111,7 @@ Task reminder/repeat preferences are stored; automated notifications and recurri
 New default properties are added once without overwriting custom definitions or existing records. Configure labels/options and add custom properties through **Configure properties**. Later user removal of a default property is respected after the migration.
 
 Record creation update validation: 48 automated tests pass. Browser checks verified the dropdown, task/company/deal panels, contact name derivation, saved line items, calculated amount and Create and add another. Temporary verification records were removed.
+
+### Email imports and contact editing
+
+Choose a date range and preview its message count before importing email. Imports process the entire selected range in batches, show progress, and avoid duplicate activities. New contacts belong to the signed-in user (or connected email address in local mode). Contact properties support direct editing with Save and Cancel, and owner selectors include the current user and connected inbox addresses. See [EMAIL.md](EMAIL.md).

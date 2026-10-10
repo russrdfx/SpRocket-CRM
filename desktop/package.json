@@ -1,6 +1,6 @@
 {
   "name": "sprocket-crm-desktop",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "SpRocket CRM desktop application",
   "author": "SpRocket CRM contributors",
   "license": "MIT",
@@ -10,7 +10,8 @@
     "build:backend": "python3 scripts/build_backend.py",
     "build:mac": "electron-builder --mac dmg --arm64 --publish never",
     "build:dir": "electron-builder --mac dir --arm64 --publish never",
-    "build:mac:zip": "electron-builder --mac zip --arm64 --publish never"
+    "build:mac:zip": "electron-builder --mac zip --arm64 --publish never && python3 scripts/verify_mac.py",
+    "verify:mac": "python3 scripts/verify_mac.py"
   },
   "devDependencies": {
     "electron": "44.7.0",
@@ -39,13 +40,15 @@
     "mac": {
       "category": "public.app-category.business",
       "icon": "assets/icon.png",
-      "identity": null,
-      "target": "dmg"
+      "identity": "-",
+      "target": "dmg",
+      "timestamp": "none"
     },
     "dmg": {
       "title": "SpRocket CRM",
       "sign": false
     },
-    "artifactName": "SpRocket-CRM-${version}-${arch}.${ext}"
+    "artifactName": "SpRocket-CRM-${version}-${arch}.${ext}",
+    "afterPack": "scripts/sanitize_mac.cjs"
   }
 }
