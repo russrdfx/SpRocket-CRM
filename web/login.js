@@ -1,0 +1,1 @@
+fetch('/api/auth').then(r=>r.json()).then(auth=>{if(!auth.enabled||auth.user)location.href='/'}).catch(()=>{document.querySelector('#login-status').textContent='Unable to check sign-in status. Please reload.'});

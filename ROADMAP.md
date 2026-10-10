@@ -9,11 +9,11 @@
 
 ## Delivered foundation
 
-Local persistent record management, generic typed fields, configurable record types and pipelines, assignment labels, record relationships, activity logs, list/board views with drag-and-drop stage changes, enriched cards, stage totals and weighted values, a three-column deal details page, searchable activity timelines, live summary reports and overview metrics. Expanded navigation and searchable/tabbed Settings establish the product structure; unfinished areas are explicitly labeled as planned. An optional fictional sample-data script is included. This is an initial development release, with no identity or team access layer.
+Local persistent record management, generic typed fields, configurable record types and pipelines, assignment labels, record relationships, activity logs, list/board views with drag-and-drop stage changes, enriched cards, stage totals and weighted values, a three-column deal details page, searchable activity timelines, live summary reports and overview metrics. Expanded navigation and searchable/tabbed Settings establish the product structure; unfinished areas are explicitly labeled as planned. An optional fictional sample-data script is included. This is an initial development release, with optional OIDC sign-in and an explicit subject allowlist. Team roles and workspace isolation remain future work.
 
 ## Next releases
 
-1. Production foundation: user authentication, roles, workspaces, audit history, migrations, backups, PostgreSQL deployment and container packaging. Enforce workspace isolation in every API operation.
+1. Production foundation: expanded identity management, roles, workspaces, audit history, migrations, backups, PostgreSQL deployment and container packaging. Enforce workspace isolation in every API operation.
 2. Rich records: field editing/retirement, required and conditional fields, relationship labels, import/export, merge, saved views and advanced filtering. Handle configuration migrations without data loss.
 3. Automation: configurable triggers, conditions and actions; task creation, assignment, stage changes, scheduling, retries, execution logs and loop prevention.
 4. Service: SLA calendars and clocks, support queues, shared inbox channels, conversation assignment and knowledge base.

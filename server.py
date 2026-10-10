@@ -6,7 +6,11 @@ import uuid
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
+from auth import OIDC
+import sso_config
+
+AUTH = OIDC()
 
 ROOT = Path(__file__).parent
 DB = Path(os.environ.get('SPROCKET_DB', str(ROOT / 'data' / 'sprocket.db')))
@@ -126,14 +130,57 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(raw)
 
+    def redirect(self, location, cookies=()):
+        self.send_response(303)
+        self.send_header('Location', location)
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('Referrer-Policy', 'no-referrer')
+        for cookie in cookies:
+            self.send_header('Set-Cookie', cookie)
+        self.send_header('Content-Length', '0')
+        self.end_headers()
+
+    def log_message(self, fmt, *args):
+        # Callback URLs contain authorization codes; never log request URLs.
+        pass
+
+    def sso_admin(self):
+        if not AUTH.enabled:
+            return True  # Unconfigured loopback demo: local operator setup.
+        user = AUTH.user(self.headers)
+        admins = {x.strip() for x in os.getenv('OIDC_ADMIN_SUBJECTS', '').split(',') if x.strip()}
+        return bool(user and user['subject'] in admins)
+
     def do_GET(self):
         path = urlparse(self.path).path
+        if path == '/api/auth':
+            return self.reply(200, {'enabled': AUTH.enabled, 'user': AUTH.user(self.headers) if AUTH.enabled else None})
+        if path == '/auth/login' and AUTH.enabled:
+            try:
+                location, cookie = AUTH.begin()
+                return self.redirect(location, [cookie])
+            except Exception:
+                return self.reply(503, {'error': 'Sign-in is unavailable. Check provider configuration.'})
+        if path == '/auth/callback' and AUTH.enabled:
+            try:
+                cookie = AUTH.finish(parse_qs(urlparse(self.path).query), self.headers)
+                return self.redirect('/', [cookie, AUTH.cookie('sprocket_login', '', 0)])
+            except Exception:
+                return self.reply(401, {'error': 'Sign-in failed or this identity is not allowed. Start a new login.'})
+        if AUTH.enabled and not AUTH.user(self.headers) and path not in ('/login', '/style.css', '/login.js'):
+            if path.startswith('/api/'):
+                return self.reply(401, {'error': 'Sign-in required'})
+            return self.redirect('/login')
+        if path == '/api/sso':
+            if not self.sso_admin():
+                return self.reply(403, {'error': 'SSO configuration requires an administrator subject configured on the server.'})
+            return self.reply(200, {'config': sso_config.effective(), 'enabled': AUTH.enabled, 'secret_configured': bool(os.getenv('OIDC_CLIENT_SECRET')), 'overrides': [k for k,env in sso_config.FIELDS.items() if env in os.environ]})
         if path == '/api/state':
             with connect() as db:
                 records = [dict(json.loads(r['body']), id=r['id'], kind=r['kind'], updated=r['updated']) for r in db.execute('SELECT * FROM records ORDER BY updated DESC')]
                 activities = [dict(json.loads(r['body']), id=r['id'], record_id=r['record_id'], created=r['created']) for r in db.execute('SELECT * FROM activities ORDER BY created DESC')]
                 return self.reply(200, {'settings': load_settings(db), 'records': records, 'activities': activities})
-        file = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css'}.get(path)
+        file = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/login': 'login.html', '/login.js': 'login.js'}.get(path)
         if not file:
             return self.reply(404, {'error': 'Not found'})
         raw = (ROOT / 'web' / file).read_bytes()
@@ -150,8 +197,15 @@ class Handler(BaseHTTPRequestHandler):
         if self.headers.get('Content-Type', '').split(';')[0] != 'application/json':
             return self.reply(415, {'error': 'JSON required'})
         origin = self.headers.get('Origin')
-        if origin and origin != 'http://' + self.headers.get('Host', ''):
+        if origin and origin != (AUTH.origin if AUTH.enabled else 'http://' + self.headers.get('Host', '')):
             return self.reply(403, {'error': 'Invalid origin'})
+        if AUTH.enabled:
+            if self.headers.get('Origin') != AUTH.origin:
+                return self.reply(403, {'error': 'Invalid origin'})
+            if not AUTH.user(self.headers):
+                return self.reply(401, {'error': 'Sign-in required'})
+            if urlparse(self.path).path == '/auth/logout':
+                return self.redirect('/login', [AUTH.logout(self.headers)])
         try:
             length = int(self.headers.get('Content-Length', 0))
             if not 0 < length <= 1000000:
@@ -159,6 +213,25 @@ class Handler(BaseHTTPRequestHandler):
             data = json.loads(self.rfile.read(length))
             path = urlparse(self.path).path
             now = datetime.now(timezone.utc).isoformat()
+            if path in ('/api/sso', '/api/sso/test'):
+                if not self.sso_admin():
+                    return self.reply(403, {'error': 'SSO administrator access required.'})
+                if self.headers.get('Origin') != (AUTH.origin if AUTH.enabled else 'http://' + self.headers.get('Host', '')):
+                    return self.reply(403, {'error': 'Same-origin browser request required.'})
+                config = sso_config.validate(data)
+                if path == '/api/sso':
+                    sso_config.save(config)
+                    return self.reply(200, {'ok': True, 'restart_required': True})
+                # Discovery only; no credentials are transmitted and no access is enabled.
+                try:
+                    probe = OIDC.__new__(OIDC)
+                    probe.issuer = config['issuer']; probe.metadata = None
+                    metadata = probe.discover()
+                    if 'RS256' not in metadata.get('id_token_signing_alg_values_supported', []):
+                        raise ValueError('Provider must support RS256 ID tokens.')
+                    return self.reply(200, {'ok': True, 'message': 'Provider discovery verified. Client credentials and real sign-in still require an integration test.'})
+                except Exception:
+                    return self.reply(400, {'error': 'Provider discovery failed. Check the issuer, HTTPS connectivity and RS256/client_secret_basic support.'})
             with connect() as db:
                 if path == '/api/settings':
                     validate_settings(data, load_settings(db), db.execute('SELECT * FROM records').fetchall())

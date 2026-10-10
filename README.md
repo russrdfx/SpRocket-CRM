@@ -4,7 +4,7 @@ A free, MIT-licensed, configurable CRM foundation.
 
 ## Run locally
 
-Requires Python 3.9 or later. No packages to install.
+Requires Python 3.9 or later. The local demo needs no packages. Optional SSO requires the dependencies in [SSO setup](SSO.md).
 
 ```sh
 python3 server.py
@@ -46,12 +46,22 @@ Adds 12 fictional records (3 contacts, 2 companies, 3 deals, 2 tasks and 2 ticke
 
 ## Current scope
 
-This is a local single-user development foundation, not a production deployment or functional CRM replacement. It binds to loopback only. Owner names are assignment labels, not login accounts. Authentication, authorization, audit history, collaboration, backups, an automation engine, inbox synchronization, email delivery, marketing, quotes, invoicing and richer reporting remain roadmap work. Do not expose this development server publicly.
+This is a local single-user development foundation, not a production deployment or functional CRM replacement. It binds to loopback only. Owner names are assignment labels, not login accounts. Team roles, audit history, collaboration, backups, an automation engine, inbox synchronization, email delivery, marketing, quotes, invoicing and richer reporting remain roadmap work. Do not expose this development server publicly.
+
+## Optional OpenID Connect SSO
+
+Open **Configuration → Security → Single sign-on (SSO)** to save provider settings and test discovery. See [SSO setup](SSO.md) for provider registration, dependencies, environment configuration and activation.
+
+Sign-in protects CRM pages and APIs when configured. Allowed identities share full workspace access; SSO administration requires server-designated administrator subjects. Secrets stay in the server environment. Saved non-secret settings stay in ignored local storage; environment values override them. Restart to activate changes.
+
+The default unconfigured mode is a local demo without authentication. Discovery tests check provider metadata only; real-provider sign-in remains an integration check.
 
 ## Test
 
 ```sh
 python3 test_server.py
+# After installing SSO dependencies:
+python3 -m unittest discover -p 'test_*.py'
 ```
 
 Tests cover empty initialization, custom pipelines, persistent records, invalid stages, referenced-stage protection, activity cleanup, and cross-origin write rejection.
