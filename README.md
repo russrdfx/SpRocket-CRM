@@ -35,11 +35,20 @@ The workspace starts empty. No external CRM records or configuration are importe
 python3 seed_sample.py
 ```
 
-Adds 12 fictional records (3 contacts, 2 companies, 3 deals, 2 tasks and 2 tickets), four activity entries, a demo owner label and a three-stage demo pipeline. Every record name begins with `SAMPLE`; emails and websites use reserved `.example` domains. Run against the same `SPROCKET_DB` as the server, then reload the browser. Re-running skips existing sample records and activities. Existing records are preserved. The database itself is never committed.
+Adds 13 fictional records (3 contacts, 2 companies, 3 deals, 3 tasks and 2 tickets), four activity entries, a demo owner label and a three-stage demo pipeline. Every record name begins with `SAMPLE`; emails and websites use reserved `.example` domains. Run against the same `SPROCKET_DB` as the server, then reload the browser. Re-running skips existing sample records and activities. Existing records are preserved. The database itself is never committed.
+
+## Recent interface updates
+
+- Profile dropdown with profile details, account settings, SSO administration for designated admins, and sign-out for authenticated users. Local demo identity is labeled explicitly.
+- Click dashboard tiles to open records or the weighted-value breakdown. Activity entries open their records; the Recent activity heading opens the full history.
+- Contact details use a three-column layout with properties, activity search and filters, logging shortcuts, related records and upcoming linked tasks. Overview, Activities and Intelligence tabs show implemented functionality or an explicit planned status.
+- Records without pipelines always use list view, preventing an empty board from hiding contacts, companies or tasks.
+- Each sample deal has a linked contact, company and task. Sample relationships are visible from both ends in detail pages.
 
 ## Using the interface
 
 - Open Deals and choose **Board view**. Drag a card into a stage, including a different pipeline, or into **No pipeline**.
+- Click a contact to open its full details page. Use **Edit contact** or **Edit links** to edit properties and associations. Email and call shortcuts log activity; they do not send messages or place calls.
 - Click a deal to see its details. Use **Edit deal** for fields and relationships; use **Activities** to search, filter and log notes, emails, calls or meetings. These are logs, not delivery tools.
 - Open **Configuration**: Account Defaults manages the workspace; Properties manages fields; Objects manages record types and pipelines.
 - Use **More → Reporting → Reports** for the three live summaries. Other menu areas show their implementation status.

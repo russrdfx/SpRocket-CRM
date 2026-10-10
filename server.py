@@ -154,7 +154,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = urlparse(self.path).path
         if path == '/api/auth':
-            return self.reply(200, {'enabled': AUTH.enabled, 'user': AUTH.user(self.headers) if AUTH.enabled else None})
+            return self.reply(200, {'enabled': AUTH.enabled, 'user': AUTH.user(self.headers) if AUTH.enabled else None, 'is_admin': self.sso_admin()})
         if path == '/auth/login' and AUTH.enabled:
             try:
                 location, cookie = AUTH.begin()

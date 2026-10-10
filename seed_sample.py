@@ -24,6 +24,7 @@ with s.connect() as db:
       ('deal1','deals','SAMPLE — Studio Starter Project',{'amount':2500,'close_date':str(date.today()+timedelta(days=14)),'pipeline':pid,'stage':'sample_discovery','links':['company1','contact1']}),
       ('deal2','deals','SAMPLE — Labs Service Package',{'amount':7200,'close_date':str(date.today()+timedelta(days=7)),'pipeline':pid,'stage':'sample_proposal','links':['company2','contact2']}),
       ('deal3','deals','SAMPLE — Studio Onboarding',{'amount':1200,'close_date':str(date.today()-timedelta(days=2)),'pipeline':pid,'stage':'sample_won','links':['company1','contact3']}),
+      ('task3','tasks','SAMPLE — Arrange a studio discovery call',{'priority':'Medium','due_date':str(date.today()+timedelta(days=3)),'links':['deal1','contact1']}),
       ('task1','tasks','SAMPLE — Prepare a demo proposal',{'priority':'High','due_date':str(date.today()+timedelta(days=2)),'links':['deal2','contact2']}),
       ('task2','tasks','SAMPLE — Schedule a fictional kickoff',{'priority':'Medium','due_date':str(date.today()+timedelta(days=4)),'links':['deal3','contact3']}),
       ('ticket1','tickets','SAMPLE — Demo login question',{'priority':'Low','links':['contact1','company1']}),
