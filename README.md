@@ -6,9 +6,9 @@ A free, MIT-licensed, configurable CRM foundation.
 
 ## Desktop app
 
-**Mac download status:** the v0.1.0 pre-release has a signature integrity packaging defect. A local v0.1.1 development correction passes signature integrity verification and launches; Developer ID signing and notarization remain planned.
+**Mac download:** [v0.1.2 preview release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/v0.1.2) for Apple Silicon Macs. The package passes strict signature integrity verification with an ad-hoc development signature; Developer ID signing and notarization remain planned. Avoid the defective v0.1.0 package.
 
-An Apple Silicon Mac desktop installer now bundles the CRM and Python server, uses the full-color SpRocket icon, and keeps data outside the app. The first build is unsigned for development. See [desktop installation, backups and build instructions](DESKTOP.md). Windows, Intel Mac and signed public releases remain planned.
+An Apple Silicon Mac desktop installer now bundles the CRM and Python server, uses the full-color SpRocket icon, and keeps data outside the app. The preview build is ad-hoc signed for development and is not notarized. See [desktop installation, backups and build instructions](DESKTOP.md). Windows, Intel Mac and signed public releases remain planned.
 
 ## Run locally
 

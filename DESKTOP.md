@@ -1,24 +1,24 @@
 # SpRocket CRM desktop
 
-The desktop edition packages the existing CRM and Python server inside Electron. Users do not need to install Python or Node. The initial installer targets **Apple Silicon Macs** and is an **unsigned development build**. Windows, Intel Mac builds, automatic updates, signing and Apple notarization remain planned.
+The desktop edition packages the existing CRM and Python server inside Electron. Users do not need to install Python or Node. The initial installer targets **Apple Silicon Macs** and is an **ad-hoc signed development build, without Developer ID signing or notarization**. Windows, Intel Mac builds, automatic updates, signing and Apple notarization remain planned.
 
 ## Build produced in this workspace
 
-The application bundle and ZIP distribution were built. The DMG attempt was blocked by the execution environment: `hdiutil: create failed - Device not configured`. Use the ZIP now; extract it and move **SpRocket CRM.app** into Applications. The DMG command remains available for a normal Mac development environment. This ZIP is also unsigned.
+The application bundle and ZIP distribution were built. The DMG attempt was blocked by the execution environment: `hdiutil: create failed - Device not configured`. Use the ZIP now; extract it and move **SpRocket CRM.app** into Applications. The DMG command remains available for a normal Mac development environment. The ZIP uses an ad-hoc development signature and passes strict signature integrity verification. It is not notarized.
 
 ## GitHub download
 
-The `v0.1.0` GitHub pre-release provides `SpRocket-CRM-0.1.0-arm64.zip`. It is labeled unsigned and non-production ready. Source changes and documentation are committed separately from the downloadable release asset. See [the release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/v0.1.0).
+The [v0.1.2 preview release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/v0.1.2) provides `SpRocket-CRM-0.1.2-arm64.zip` and a SHA-256 checksum. This Apple Silicon Mac build uses an ad-hoc development signature and is not notarized. Source pushes do not update release downloads; each package is published separately. Avoid the defective v0.1.0 package.
 
 ## Install and use
 
-Open `SpRocket-CRM-0.1.0-arm64.dmg` and drag **SpRocket CRM** into Applications. Launch the app. The workspace starts empty; existing development data is not included in the installer. macOS may block this unsigned build. For a build you trust, use the approval option in System Settings → Privacy & Security. Public distribution should use a signed and notarized release.
+Download and unzip `SpRocket-CRM-0.1.2-arm64.zip`. Quit any running SpRocket CRM, then move **SpRocket CRM.app** into Applications, replacing the previous copy. Launch the app. The workspace starts empty; existing development data is not included in the installer. macOS may block this development build. For a build you trust, use the approval option in System Settings → Privacy & Security. Public distribution should use a signed and notarized release.
 
 The app starts its own server at `http://127.0.0.1:18765` and stops it on quit. Opening the application again focuses the existing window. If another process occupies that port, startup fails instead of connecting to another server. The browser development server on port 8765 can run separately.
 
 ## Data and backups
 
-The Mac data folder is `~/Library/Application Support/SpRocket CRM`. Use **File → Open data folder** to find the actual folder. It contains `sprocket.db`, optional `sso.json`, a private `mail-token.key`, and optional `desktop-config.json`. App upgrades preserve these files. Removing the application does not remove its data. Database contents remain local and are not encrypted at rest; email authorization tokens are encrypted with the separate key.
+The Mac data folder is `~/Library/Application Support/sprocket-crm-desktop`. Use **File → Open data folder** to find the actual folder. It contains `sprocket.db`, optional `sso.json`, a private `mail-token.key`, and optional `desktop-config.json`. App upgrades preserve these files. Removing the application does not remove its data. Database contents remain local and are not encrypted at rest; email authorization tokens are encrypted with the separate key.
 
 **File → Back up database…** makes a consistent SQLite snapshot, including records, activity and cached mail. Keep a separate secure copy of `mail-token.key` and configuration if you need to restore connected email accounts. To restore, quit the app, preserve a copy of current data, then replace `sprocket.db` with the backup in the data folder. Restore its corresponding key if retaining email connections. Do not copy a live database file directly.
 
@@ -84,4 +84,4 @@ v0.1.1 verification: strict signature integrity passed for the built app and a f
 
 ## 0.1.2
 
-Adds date-range email import previews and batched imports, automatic ownership for newly imported contacts, owner choices for the signed-in user and connected inbox addresses, and direct contact property editing. Existing CRM data and assigned contact owners are retained. This local build has not been published as a GitHub release.
+Adds date-range email import previews and batched imports, automatic ownership for newly imported contacts, owner choices for the signed-in user and connected inbox addresses, and direct contact property editing. Existing CRM data and assigned contact owners are retained. Published as a GitHub preview release for Apple Silicon Macs. All 55 tests pass; the packaged backend backup smoke test and fresh ZIP signature verification pass. Developer ID signing and notarization are not included.
