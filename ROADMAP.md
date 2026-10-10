@@ -1,0 +1,25 @@
+# Sprocket CRM roadmap
+
+## Product requirements
+
+- Free, open source, self-hostable, MIT licensed.
+- Account- and portal-agnostic. No external CRM identifiers, customer data, branding, pipeline names or custom configuration in source or sample data.
+- Configuration is foundational: multiple pipelines, stage order/probabilities, object types, typed properties, relationships, saved views and rules belong to users.
+- Reference general CRM functionality; use an original interface.
+
+## Delivered foundation
+
+Local persistent record management, generic typed fields, configurable record types and pipelines, assignment labels, record relationships, activity logs, list/board views and overview metrics. This is an initial development release, with no identity or team access layer.
+
+## Next releases
+
+1. Production foundation: user authentication, roles, workspaces, audit history, migrations, backups, PostgreSQL deployment and container packaging. Enforce workspace isolation in every API operation.
+2. Rich records: field editing/retirement, required and conditional fields, relationship labels, import/export, merge, saved views and advanced filtering. Handle configuration migrations without data loss.
+3. Automation: configurable triggers, conditions and actions; task creation, assignment, stage changes, scheduling, retries, execution logs and loop prevention.
+4. Service: SLA calendars and clocks, support queues, shared inbox channels, conversation assignment and knowledge base.
+5. Sales: product catalog, line items, quote documents, approvals, forecasting, sequences, playbooks and meeting scheduling.
+6. Marketing: static and dynamic segments, consent and subscription preferences, templates, email delivery adapters, campaigns, forms and landing pages.
+7. Commerce: invoices, subscriptions, orders and optional payment-provider adapters.
+8. Reporting: configurable dashboards, funnels, conversion/cohort reports, attribution and activity metrics.
+
+No premium-feature gates are planned for the open-source core. External email, calling and payment services may have their own costs. Feature availability in a reference account does not determine Sprocket's requirements. Features that were not exposed through MCP require independent product design; inspection is not evidence of complete parity.
