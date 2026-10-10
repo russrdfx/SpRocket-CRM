@@ -6,7 +6,7 @@ A free, MIT-licensed, configurable CRM foundation.
 
 ## Desktop app
 
-**Mac download:** [v0.1.2 preview release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/v0.1.2) for Apple Silicon Macs. The package passes strict signature integrity verification with an ad-hoc development signature; Developer ID signing and notarization remain planned. Avoid the defective v0.1.0 package.
+**Mac download:** [v0.1.3 preview release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/v0.1.3) for Apple Silicon Macs. The package passes strict signature integrity verification with an ad-hoc development signature; Developer ID signing and notarization remain planned. Avoid the defective v0.1.0 package.
 
 An Apple Silicon Mac desktop installer now bundles the CRM and Python server, uses the full-color SpRocket icon, and keeps data outside the app. The preview build is ad-hoc signed for development and is not notarized. See [desktop installation, backups and build instructions](DESKTOP.md). Windows, Intel Mac and signed public releases remain planned.
 
@@ -115,3 +115,5 @@ Record creation update validation: 48 automated tests pass. Browser checks verif
 ### Email imports and contact editing
 
 Choose a date range and preview its message count before importing email. Imports process the entire selected range in batches, show progress, and avoid duplicate activities. New contacts belong to the signed-in user (or connected email address in local mode). Contact properties support direct editing with Save and Cancel, and owner selectors include the current user and connected inbox addresses. See [EMAIL.md](EMAIL.md).
+
+Email activities use a message layout with separate headers and body. Google HTML email is displayed in a restricted sandbox with remote content blocked. The Contacts Lead stage column uses Lifecycle stage; new imported contacts start at Lead.

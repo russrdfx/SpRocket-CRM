@@ -9,7 +9,7 @@ from email.parser import BytesParser
 from pathlib import Path
 from unittest.mock import patch
 from cryptography.fernet import Fernet
-from mail_service import MailService, MailError, gmail_message, microsoft_message, NoRedirect
+from mail_service import MailService, MailError, gmail_message, microsoft_message, NoRedirect, safe_email_html
 from test_server import app, CRMTest
 
 class MailTest(unittest.TestCase):
@@ -135,6 +135,25 @@ class MailTest(unittest.TestCase):
             with self.assertRaises(MailError):self.mail.send(self.owner,dict(account_id='account',to='person@example.test\r\nBcc: other@example.test',subject='test',text='test'))
             call.assert_not_called()
         with self.assertRaises(MailError):NoRedirect().redirect_request(None,None,302,'',{},'https://attacker.example')
+    def test_html_email_removes_active_and_remote_content(self):
+        html=safe_email_html('<meta http-equiv="refresh" content="0;url=https://tracker.example"><script>alert(1)</script><iframe src="https://tracker.example"></iframe><img src="https://tracker.example/pixel" onerror="alert(1)"><p style="color:red">Safe &amp; readable</p>')
+        self.assertNotIn('tracker.example',html);self.assertNotIn('alert',html);self.assertNotIn('meta',html);self.assertNotIn('iframe',html);self.assertIn('Safe &amp; readable',html)
+
+    def test_html_email_normalization_and_reimport_enriches_existing_activity(self):
+        html='<h1>Sample message</h1><p>Formatted body</p>'
+        message=gmail_message({'id':'test','payload':{'parts':[{'mimeType':'text/plain','body':{'data':base64.urlsafe_b64encode(b'Plain body').decode()}},{'mimeType':'text/html','body':{'data':base64.urlsafe_b64encode(html.encode()).decode()}},{'filename':'attachment.html','mimeType':'text/html','body':{'data':base64.urlsafe_b64encode(b'Not message HTML').decode()}}]},'internalDate':'1000'})
+        self.assertEqual(html,message['html']);self.assertEqual('Plain body',message['text'])
+        self.account();m=self.message();self.mail.log(self.owner,'message')
+        with app.connect() as db:
+            rows=db.execute('SELECT * FROM activities').fetchall()
+            for row in rows:
+                body=json.loads(row['body']);body.pop('email',None);db.execute('UPDATE activities SET body=? WHERE id=?',(json.dumps(body),row['id']))
+            m.update(id='message',html=html)
+            self.assertEqual(0,self.mail.log_message(db,m))
+        with app.connect() as db:
+            rows=db.execute('SELECT body FROM activities').fetchall();self.assertEqual(2,len(rows))
+            self.assertTrue(all(json.loads(r[0])['email']['html']==html for r in rows))
+
     def test_message_normalization_no_attachment_decode(self):
         raw=base64.urlsafe_b64encode(b'Sample body').decode()
         m=gmail_message({'id':'test','payload':{'parts':[{'mimeType':'text/plain','body':{'data':raw}},{'filename':'private.txt','mimeType':'text/plain','body':{'data':raw}}]},'internalDate':'1000'})

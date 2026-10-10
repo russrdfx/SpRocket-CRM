@@ -58,6 +58,40 @@ def addresses(value):
     return [a.lower() for _, a in getaddresses([value]) if a]
 
 
+def safe_email_html(value):
+    """Retain passive email formatting; the browser adds a separate sandbox/CSP."""
+    from html import escape
+    from html.parser import HTMLParser
+    class EmailHTML(HTMLParser):
+        allowed = set('div span p br hr h1 h2 h3 h4 h5 h6 b strong i em u s small blockquote pre code ul ol li table tbody thead tfoot tr td th colgroup col a img style center font'.split())
+        void = {'br','hr','img','col'}
+        def __init__(self):
+            super().__init__(convert_charrefs=True); self.output=[]; self.blocked=None; self.instyle=False
+        def handle_starttag(self, tag, attrs):
+            if self.blocked: return
+            if tag in {'script','iframe','object','svg','math','template'}:
+                self.blocked=tag; return
+            if tag not in self.allowed: return
+            if tag=='style':self.instyle=True
+            clean=[]
+            for key,val in attrs:
+                val=val or ''
+                if key in {'style','class','width','height','align','valign','bgcolor','color','size','face','colspan','rowspan','cellpadding','cellspacing','border','alt','title'}:
+                    clean.append((key,val))
+                elif tag=='img' and key=='src' and re.match(r'^data:image/(png|jpeg|gif|webp);base64,',val,re.I):clean.append((key,val))
+                elif tag=='a' and key=='href' and urlparse(val).scheme in {'https','http','mailto'}:clean.append((key,val))
+            self.output.append('<'+tag+''.join(' '+k+'="'+escape(v,quote=True)+'"' for k,v in clean)+'>')
+        def handle_endtag(self, tag):
+            if self.blocked:
+                if tag==self.blocked:self.blocked=None
+                return
+            if tag=='style':self.instyle=False
+            if tag in self.allowed and tag not in self.void:self.output.append('</'+tag+'>')
+        def handle_data(self, data):
+            if not self.blocked:self.output.append(data if self.instyle else escape(data))
+    parser=EmailHTML();parser.feed(value[:200000]);parser.close();return ''.join(parser.output)
+
+
 def gmail_message(m):
     headers = {h['name'].lower(): h['value'] for h in m.get('payload', {}).get('headers', [])}
     def plain(part):
@@ -67,7 +101,13 @@ def gmail_message(m):
             raw = part['body']['data']
             return base64.urlsafe_b64decode(raw + '=' * (-len(raw) % 4)).decode('utf-8', errors='replace')
         return '\n'.join(filter(None, (plain(p) for p in part.get('parts', []))))
-    return dict(provider_id=m['id'], thread_id=m.get('threadId', ''), subject=headers.get('subject', '(No subject)'), sender=headers.get('from', ''), to=headers.get('to', ''), cc=headers.get('cc', ''), text=(plain(m.get('payload', {})) or m.get('snippet', ''))[:50000], date=datetime.fromtimestamp(int(m.get('internalDate', '0')) / 1000, timezone.utc).isoformat(), message_id=headers.get('message-id', ''), direction='sent' if 'SENT' in m.get('labelIds', []) else 'received')
+    def rich(part):
+        if part.get('filename'): return ''
+        if part.get('mimeType') == 'text/html' and part.get('body', {}).get('data'):
+            raw = part['body']['data']
+            return base64.urlsafe_b64decode(raw + '=' * (-len(raw) % 4)).decode('utf-8', errors='replace')
+        return ''.join(rich(p) for p in part.get('parts', []))
+    return dict(html=safe_email_html(rich(m.get('payload', {}))),provider_id=m['id'], thread_id=m.get('threadId', ''), subject=headers.get('subject', '(No subject)'), sender=headers.get('from', ''), to=headers.get('to', ''), cc=headers.get('cc', ''), text=(plain(m.get('payload', {})) or m.get('snippet', ''))[:50000], date=datetime.fromtimestamp(int(m.get('internalDate', '0')) / 1000, timezone.utc).isoformat(), message_id=headers.get('message-id', ''), direction='sent' if 'SENT' in m.get('labelIds', []) else 'received')
 
 
 def microsoft_message(m):
@@ -244,7 +284,7 @@ class MailService:
                 created_companies += 1
             if not matches:
                 ident = str(uuid.uuid4())
-                body = dict(owner=account.get('crm_owner') or account['email'],name=display.strip()[:300] or address,email=address,links=[company],notes='Automatically created from a synced email correspondent.',record_source='Email sync')
+                body = dict(lifecycle_stage='Lead',owner=account.get('crm_owner') or account['email'],name=display.strip()[:300] or address,email=address,links=[company],notes='Automatically created from a synced email correspondent.',record_source='Email sync')
                 db.execute('INSERT INTO records VALUES(?,?,?,?)',(ident,'contacts',json.dumps(body),now))
                 created_contacts += 1
             else:
@@ -258,8 +298,13 @@ class MailService:
         count = 0
         for r in self.matched(db,m):
             if db.execute('SELECT 1 FROM mail_logs WHERE message_id=? AND record_id=?',(m['id'],r['id'])).fetchone():
+                for activity in db.execute('SELECT id,body FROM activities WHERE record_id=?',(r['id'],)).fetchall():
+                    body = json.loads(activity['body'])
+                    if body.get('mail_message_id') == m['id']:
+                        body['email'] = {k:m.get(k,'') for k in ('subject','sender','to','cc','date','direction','text','html')}
+                        db.execute('UPDATE activities SET body=? WHERE id=?',(json.dumps(body),activity['id']))
                 continue
-            body = dict(type='Email',text=m['subject']+'\nFrom: '+m['sender']+'\nTo: '+m['to']+'\n\n'+m['text'],mail_message_id=m['id'])
+            body = dict(type='Email',email={k:m.get(k,'') for k in ('subject','sender','to','cc','date','direction','text','html')},text=m['subject']+'\nFrom: '+m['sender']+'\nTo: '+m['to']+'\n\n'+m['text'],mail_message_id=m['id'])
             db.execute('INSERT INTO activities VALUES(?,?,?,?)',(str(uuid.uuid4()),r['id'],json.dumps(body),m['date']))
             db.execute('INSERT INTO mail_logs VALUES(?,?)',(m['id'],r['id']))
             count += 1

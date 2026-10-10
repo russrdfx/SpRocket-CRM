@@ -14,7 +14,7 @@ SpRocket supports Google / Gmail and Microsoft 365 / Outlook through a shared pe
 - Follow-up task creation with due date and matched record links. Repeating it returns the existing task.
 - Disconnect removes stored tokens and the account's message cache. Synced CRM logs, contacts, companies and follow-up tasks remain.
 
-This version does not run background sync, process webhooks/delta cursors, render HTML, download attachments, edit/delete remote mail, support shared mailboxes, or offer multiple recipients, CC/BCC or rich-text composition. Imports page through all messages in the selected range. Preview jobs expire after one hour or a server restart; preview again to resume an interrupted import without duplicate activities. Provider-accepted send is not proof of final delivery. Microsoft sent-message previews use a local identifier until sync retrieves the provider copy; those may appear twice in the cache.
+This version does not run background sync, process webhooks/delta cursors, download attachments, edit/delete remote mail, support shared mailboxes, or offer multiple recipients, CC/BCC or rich-text composition. Imports page through all messages in the selected range. Preview jobs expire after one hour or a server restart; preview again to resume an interrupted import without duplicate activities. Provider-accepted send is not proof of final delivery. Microsoft sent-message previews use a local identifier until sync retrieves the provider copy; those may appear twice in the cache.
 
 ## Server prerequisites
 
@@ -90,3 +90,9 @@ Automated tests mock provider responses and cover state/browser/owner checks, PK
 The desktop app uses port 18765 and system-browser authorization. Provider setup, private local configuration and callback URLs are documented in [DESKTOP.md](DESKTOP.md).
 
 New contacts created during import are assigned to the signed-in CRM user. In local mode they are assigned to the connected email address. Existing contact owners are preserved. Connected email addresses and the current signed-in user are available in owner selectors. Click a contact property on its record to edit and Save or Cancel without opening the full edit dialog.
+
+## Email presentation
+
+Contact and deal activities show subject, sender, recipients, date and a separate email body. Google imports retain HTML message parts, excluding attachments. HTML is filtered to passive formatting, excluding scripts, embedded documents, refresh redirects and remote images, then displayed inside a sandboxed frame with scripts, forms and remote resources blocked; plain text remains available. Microsoft currently imports plain text. Re-importing an existing message enriches its logged activity without creating duplicates. Earlier imports retain readable header/body formatting even before re-import. Dashboard entries show compact previews.
+
+The Contacts list labels the Lifecycle stage property as Lead stage rather than showing a pipeline stage. Newly imported contacts start at Lead; existing contact stage values are preserved.

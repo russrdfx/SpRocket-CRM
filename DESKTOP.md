@@ -8,11 +8,11 @@ The application bundle and ZIP distribution were built. The DMG attempt was bloc
 
 ## GitHub download
 
-The [v0.1.2 preview release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/v0.1.2) provides `SpRocket-CRM-0.1.2-arm64.zip` and a SHA-256 checksum. This Apple Silicon Mac build uses an ad-hoc development signature and is not notarized. Source pushes do not update release downloads; each package is published separately. Avoid the defective v0.1.0 package.
+The [v0.1.3 preview release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/v0.1.3) provides `SpRocket-CRM-0.1.3-arm64.zip` and a SHA-256 checksum. This Apple Silicon Mac build uses an ad-hoc development signature and is not notarized. Source pushes do not update release downloads; each package is published separately. Avoid the defective v0.1.0 package.
 
 ## Install and use
 
-Download and unzip `SpRocket-CRM-0.1.2-arm64.zip`. Quit any running SpRocket CRM, then move **SpRocket CRM.app** into Applications, replacing the previous copy. Launch the app. The workspace starts empty; existing development data is not included in the installer. macOS may block this development build. For a build you trust, use the approval option in System Settings → Privacy & Security. Public distribution should use a signed and notarized release.
+Download and unzip `SpRocket-CRM-0.1.3-arm64.zip`. Quit any running SpRocket CRM, then move **SpRocket CRM.app** into Applications, replacing the previous copy. Launch the app. The workspace starts empty; existing development data is not included in the installer. macOS may block this development build. For a build you trust, use the approval option in System Settings → Privacy & Security. Public distribution should use a signed and notarized release.
 
 The app starts its own server at `http://127.0.0.1:18765` and stops it on quit. Opening the application again focuses the existing window. If another process occupies that port, startup fails instead of connecting to another server. The browser development server on port 8765 can run separately.
 
@@ -85,3 +85,7 @@ v0.1.1 verification: strict signature integrity passed for the built app and a f
 ## 0.1.2
 
 Adds date-range email import previews and batched imports, automatic ownership for newly imported contacts, owner choices for the signed-in user and connected inbox addresses, and direct contact property editing. Existing CRM data and assigned contact owners are retained. Published as a GitHub preview release for Apple Silicon Macs. All 55 tests pass; the packaged backend backup smoke test and fresh ZIP signature verification pass. Developer ID signing and notarization are not included.
+
+## v0.1.3
+
+Adds client-style email activity headers and bodies, sandboxed Google HTML email, compact dashboard previews, and a Contacts Lead stage column using Lifecycle stage. New imported contacts start at Lead. Existing imports can be re-imported to enrich formatted content without duplicate activities. All 57 backend tests and the email presentation checks pass. Published as an Apple Silicon Mac preview release, with an ad-hoc development signature and no Apple notarization.

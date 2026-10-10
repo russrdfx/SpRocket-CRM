@@ -1,4 +1,4 @@
-/* Shared personal inbox for Google and Microsoft. Message text is never rendered as HTML. */
+/* Shared personal inbox for Google and Microsoft. HTML email is isolated in a sandbox with remote content blocked. */
 let mailAccount='', mailMessages=[], mailSearch='', mailSelected='', mailGeneration=0;
 async function mailView(target=$('#content')){
  const generation=++mailGeneration;
@@ -61,7 +61,7 @@ function mailList(account){
  document.querySelectorAll('[data-mail-message]').forEach(b=>b.onclick=()=>{mailSelected=b.dataset.mailMessage;mailList(account)});
  const m=mailMessages.find(m=>m.id===mailSelected);
  if(!m){$('#mail-detail').innerHTML='<p>Select a message to view its details.</p>';return}
- $('#mail-detail').innerHTML=`<h2>${esc(m.subject)}</h2><p><b>From:</b> ${esc(m.sender)}<br><b>To:</b> ${esc(m.to)}${m.cc?'<br><b>Cc:</b> '+esc(m.cc):''}</p><small>${esc(new Date(m.date).toLocaleString())}</small><pre class="mail-body">${esc(m.text)}</pre><div class="actions"><button id="mail-reply" ${m.direction==='sent'?'disabled title="Compose a new message to follow up on sent mail"':''}>Reply</button><button id="mail-task">Create follow-up task</button><button id="mail-log" ${m.matches.length?'':'disabled'}>Log on newly matched records</button></div><p class="muted">Synced messages are logged automatically and shared with the workspace. Matched contacts and linked deals:</p>${m.matches.map(r=>`<button data-mail-record="${esc(r.id)}">${esc(r.name)}${m.logged_records.includes(r.id)?' · logged':''}</button>`).join(' ')||'<p>No contacts have a matching email address.</p>'}<p class="error" id="mail-message-error"></p>`;
+ $('#mail-detail').innerHTML=`<h2>${esc(m.subject)}</h2><p><b>From:</b> ${esc(m.sender)}<br><b>To:</b> ${esc(m.to)}${m.cc?'<br><b>Cc:</b> '+esc(m.cc):''}</p><small>${esc(new Date(m.date).toLocaleString())}</small>${emailBody(m)}<div class="actions"><button id="mail-reply" ${m.direction==='sent'?'disabled title="Compose a new message to follow up on sent mail"':''}>Reply</button><button id="mail-task">Create follow-up task</button><button id="mail-log" ${m.matches.length?'':'disabled'}>Log on newly matched records</button></div><p class="muted">Synced messages are logged automatically and shared with the workspace. Matched contacts and linked deals:</p>${m.matches.map(r=>`<button data-mail-record="${esc(r.id)}">${esc(r.name)}${m.logged_records.includes(r.id)?' · logged':''}</button>`).join(' ')||'<p>No contacts have a matching email address.</p>'}<p class="error" id="mail-message-error"></p>`;
  document.querySelectorAll('[data-mail-record]').forEach(b=>b.onclick=()=>{const r=state.records.find(r=>r.id===b.dataset.mailRecord);if(r)openRecord(r)});
  $('#mail-reply').onclick=()=>mailCompose(account,m);
  $('#mail-log').onclick=async e=>{e.target.disabled=true;try{const result=await api('/api/mail/log',{message_id:m.id});state=(await api('/api/state'));state.auth=await api('/api/auth');await mailView();toast(`Logged on ${result.count} records`)}catch(err){$('#mail-message-error').textContent=err.message;e.target.disabled=false}};
@@ -85,3 +85,23 @@ async function mailCompose(account,reply=null,recipient=''){
 const mailContactDetails=contactDetails;contactDetails=function(id){mailContactDetails(id);const r=state.records.find(r=>r.id===id);if(!r)return;const parent=$('#contact-edit')?.parentElement;if(parent){const b=document.createElement('button');b.textContent='Send email';b.onclick=()=>mailCompose(null,null,r.email||'');parent.append(b)}};
 const mailDealDetails=dealDetails;dealDetails=function(id){mailDealDetails(id);const r=state.records.find(r=>r.id===id);if(!r)return;const related=state.records.filter(c=>c.kind==='contacts'&&((r.links||[]).includes(c.id)||(c.links||[]).includes(r.id)));const parent=$('#deal-edit')?.parentElement;if(parent){const b=document.createElement('button');b.textContent='Send email';b.onclick=()=>mailCompose(null,null,related[0]?.email||'');parent.append(b)}};
 const callbackResult=new URLSearchParams(location.search).get('mail');if(callbackResult){page='inbox';history.replaceState(null,'',location.pathname);if(callbackResult==='failed')setTimeout(()=>toast('Email connection failed or permission was declined. Check setup and reconnect.'),500)}
+
+function activityEmail(a){
+ if(a.email)return a.email;
+ if(a.type!=='Email'||!a.mail_message_id)return null;
+ // Older imports retain the original structured header text.
+ const match=(a.text||'').match(/^([^\n]*)\nFrom: ([^\n]*)\nTo: ([^\n]*)\n\n([\s\S]*)$/);
+ return match?{subject:match[1],sender:match[2],to:match[3],text:match[4],date:a.created}:null;
+}
+function activityPreview(a){const m=activityEmail(a);return m?`${m.subject} · ${m.sender} — ${(m.text||'').replace(/\s+/g,' ').slice(0,160)}`:(a.text||'').slice(0,240)}
+function emailBody(m){
+ if(m.html){
+  const document=`<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src 'none'; form-action 'none'; base-uri 'none'"><style>body{margin:20px;font:14px/1.6 Arial,sans-serif;color:#263442;overflow-wrap:anywhere}img{max-width:100%;height:auto}table{max-width:100%}a{color:#075d69}</style></head><body>${m.html}</body></html>`;
+  return `<p class="email-privacy">Remote images and active content are blocked.</p><iframe class="email-html" title="Email message body" sandbox="" referrerpolicy="no-referrer" srcdoc="${esc(document)}"></iframe><details class="email-text-alternative"><summary>View plain text</summary><pre class="email-plain">${esc(m.text||'No plain-text version available.')}</pre></details>`;
+ }
+ return `<div class="email-body"><pre class="email-plain">${esc(m.text||'No message body.')}</pre></div>`;
+}
+function activityContent(a){
+ const m=activityEmail(a);if(!m)return `<p class="activity-text">${esc(a.text)}</p>`;
+ return `<article class="email-card"><div class="email-message-header"><h3>${esc(m.subject||'(No subject)')}</h3><time>${esc(new Date(m.date||a.created).toLocaleString())}</time><dl><dt>From</dt><dd>${esc(m.sender)}</dd><dt>To</dt><dd>${esc(m.to)}</dd>${m.cc?`<dt>Cc</dt><dd>${esc(m.cc)}</dd>`:''}</dl></div>${emailBody(m)}</article>`;
+}
