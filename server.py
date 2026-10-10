@@ -9,6 +9,7 @@ from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 from auth import OIDC
 import sso_config
+from mail_service import MailService, MailError
 
 AUTH = OIDC()
 
@@ -24,6 +25,8 @@ def connect():
     return db
 
 
+MAIL = MailService(connect)
+
 def initialize():
     with connect() as db:
         db.executescript('''
@@ -31,6 +34,7 @@ def initialize():
         CREATE TABLE IF NOT EXISTS records (id TEXT PRIMARY KEY, kind TEXT NOT NULL, body TEXT NOT NULL, updated TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS activities (id TEXT PRIMARY KEY, record_id TEXT NOT NULL REFERENCES records(id) ON DELETE CASCADE, body TEXT NOT NULL, created TEXT NOT NULL);
         ''')
+        MAIL.initialize(db)
         if not db.execute('SELECT 1 FROM settings').fetchone():
             kinds = [
                 ('contacts', 'Contacts', [{'key': 'email', 'label': 'Email', 'type': 'email'}, {'key': 'phone', 'label': 'Phone', 'type': 'text'}]),
@@ -121,11 +125,13 @@ def validate_record(db, kind, body):
 
 
 class Handler(BaseHTTPRequestHandler):
-    def reply(self, status, body):
+    def reply(self, status, body, cookies=()):
         raw = json.dumps(body).encode()
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Content-Length', str(len(raw)))
+        for cookie in cookies:
+            self.send_header('Set-Cookie', cookie)
         self.send_header('Cache-Control', 'no-store')
         self.end_headers()
         self.wfile.write(raw)
@@ -151,6 +157,12 @@ class Handler(BaseHTTPRequestHandler):
         admins = {x.strip() for x in os.getenv('OIDC_ADMIN_SUBJECTS', '').split(',') if x.strip()}
         return bool(user and user['subject'] in admins)
 
+    def mail_owner(self):
+        user = AUTH.user(self.headers) if AUTH.enabled else None
+        if AUTH.enabled and not user:
+            raise MailError('Sign in again before connecting email.')
+        return json.dumps([AUTH.issuer, user['subject']]) if user else 'local-operator'
+
     def do_GET(self):
         path = urlparse(self.path).path
         if path == '/api/auth':
@@ -167,10 +179,25 @@ class Handler(BaseHTTPRequestHandler):
                 return self.redirect('/', [cookie, AUTH.cookie('sprocket_login', '', 0)])
             except Exception:
                 return self.reply(401, {'error': 'Sign-in failed or this identity is not allowed. Start a new login.'})
+        if path.startswith('/mail/callback/'):
+            try:
+                MAIL.finish(path.split('/')[-1], self.mail_owner(), parse_qs(urlparse(self.path).query), self.headers)
+                return self.redirect('/?mail=connected', ['sprocket_mail=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0'])
+            except (MailError, KeyError, TypeError, ValueError):
+                return self.redirect('/?mail=failed', ['sprocket_mail=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0'])
         if AUTH.enabled and not AUTH.user(self.headers) and path not in ('/login', '/style.css', '/login.js') and not path.startswith('/assets/brand/'):
             if path.startswith('/api/'):
                 return self.reply(401, {'error': 'Sign-in required'})
             return self.redirect('/login')
+        if path in ('/api/mail', '/api/mail/messages'):
+            try:
+                owner = self.mail_owner()
+                if path == '/api/mail':
+                    return self.reply(200, MAIL.status(owner))
+                ident = parse_qs(urlparse(self.path).query).get('account_id', [''])[0]
+                return self.reply(200, {'messages': MAIL.messages(owner, ident)})
+            except MailError as error:
+                return self.reply(400, {'error': str(error)})
         if path == '/api/sso':
             if not self.sso_admin():
                 return self.reply(403, {'error': 'SSO configuration requires an administrator subject configured on the server.'})
@@ -180,7 +207,7 @@ class Handler(BaseHTTPRequestHandler):
                 records = [dict(json.loads(r['body']), id=r['id'], kind=r['kind'], updated=r['updated']) for r in db.execute('SELECT * FROM records ORDER BY updated DESC')]
                 activities = [dict(json.loads(r['body']), id=r['id'], record_id=r['record_id'], created=r['created']) for r in db.execute('SELECT * FROM activities ORDER BY created DESC')]
                 return self.reply(200, {'settings': load_settings(db), 'records': records, 'activities': activities})
-        file = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/login': 'login.html', '/login.js': 'login.js'}.get(path)
+        file = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/login': 'login.html', '/login.js': 'login.js', '/mail.js': 'mail.js'}.get(path)
         if path.startswith('/assets/brand/'):
             candidate = (ROOT / 'web' / path.lstrip('/')).resolve()
             asset_root = (ROOT / 'web/assets/brand').resolve()
@@ -218,6 +245,18 @@ class Handler(BaseHTTPRequestHandler):
             data = json.loads(self.rfile.read(length))
             path = urlparse(self.path).path
             now = datetime.now(timezone.utc).isoformat()
+            if path.startswith('/api/mail/'):
+                if self.headers.get('Origin') != (AUTH.origin if AUTH.enabled else 'http://' + self.headers.get('Host', '')):
+                    return self.reply(403, {'error': 'Same-origin browser request required.'})
+                if not isinstance(data, dict):
+                    raise MailError('Email request must be an object.')
+                action = path.rsplit('/', 1)[-1]
+                owner = self.mail_owner()
+                if action == 'connect':
+                    location, cookie = MAIL.begin(data.get('provider'), owner)
+                    return self.reply(200, {'url': location}, [cookie])
+                return self.reply(200, MAIL.post(action, owner, data))
+
             if path in ('/api/sso', '/api/sso/test'):
                 if not self.sso_admin():
                     return self.reply(403, {'error': 'SSO administrator access required.'})

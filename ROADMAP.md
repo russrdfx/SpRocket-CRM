@@ -1,4 +1,4 @@
-# Sprocket CRM roadmap
+# SpRocket CRM roadmap
 
 ## Product requirements
 
@@ -10,6 +10,10 @@
 ## Delivered foundation
 
 Local persistent record management, generic typed fields, configurable record types and pipelines, assignment labels, record relationships, activity logs, list/board views with drag-and-drop stage changes, enriched cards, stage totals and weighted values, three-column deal and contact details pages, a profile menu with administrator designation, clickable dashboard drilldowns, searchable activity timelines, live summary reports and overview metrics. Expanded navigation and searchable/tabbed Settings establish the product structure; unfinished areas are explicitly labeled as planned. An optional fictional sample-data script is included. This is an initial development release, with optional OIDC sign-in and an explicit subject allowlist. Team roles and workspace isolation remain future work.
+
+## Personal email delivered
+
+Google and Microsoft personal inbox adapters now share a connection UI, encrypted tokens, manual bounded message import, plain-text compose/reply, signatures, contact/deal matching, automatic contact/domain-company creation and shared activity logging and follow-up tasks. See [EMAIL.md](EMAIL.md). Live-provider registration and consent tests remain required. Next email work: background incremental sync, attachments, richer composition, shared inboxes and assignment.
 
 ## Next releases
 

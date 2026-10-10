@@ -5,7 +5,7 @@ const money=n=>`${state.settings.currency} ${Number(n||0).toLocaleString(undefin
 async function api(url,data){const r=await fetch(url,data?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}:{});const body=await r.json();if(r.status===401){location.href='/login';throw Error('Sign-in required')}if(!r.ok)throw Error(body.error||'Request failed');return body;}
 async function refresh(){state=await api('/api/state');state.auth=await api('/api/auth');render();}
 function toast(text){$('#toast').textContent=text;$('#toast').style.display='block';setTimeout(()=>$('#toast').style.display='none',3000);}
-function go(k){page=k;query='';pipeline='';render();}
+function go(k){if(typeof mailGeneration==='number')mailGeneration++;page=k;query='';pipeline='';render();}
 function render(){
  $('#nav').innerHTML=`<button data-page="dashboard">▦ Overview</button><div class="label">RECORDS</div>${state.settings.types.map(t=>`<button data-page="${esc(t.id)}">◇ ${esc(t.name)}</button>`).join('')}<div class="label">WORKSPACE</div><button data-page="settings">⚙ Configuration</button>`;
  $('#nav').querySelectorAll('button').forEach(b=>{b.classList.toggle('active',b.dataset.page===page);b.onclick=()=>go(b.dataset.page)});
@@ -14,6 +14,7 @@ function render(){
  if(page.startsWith('deal:'))return dealDetails(page.slice(5));
  if(page==='settings')return settingsView();
  if(page==='reports')return reportsView();
+ if(page==='inbox')return mailView();
  if(page.startsWith('module:'))return plannedView(page.slice(7));
  if(page==='dashboard')return dashboard();
  if(!type(page)){page='dashboard';return render()}
@@ -103,12 +104,12 @@ const modules={
  'Agents':['Context','Agent Marketplace','Agent Hub'], 'Automation':['Workflows'], 'Reporting':['Dashboards','Reports'], 'Development':['Configuration']
 };
 let menuGroup='CRM';
-function destination(name){const built={Contacts:'contacts',Companies:'companies',Deals:'deals',Tickets:'tickets',Tasks:'tasks',Dashboards:'dashboard',Reports:'reports',Configuration:'settings','Data Model':'settings','Activity Feed':'dashboard'};go(built[name]||'module:'+name);}
+function destination(name){const built={Contacts:'contacts',Companies:'companies',Deals:'deals',Tickets:'tickets',Tasks:'tasks',Inbox:'inbox',Dashboards:'dashboard',Reports:'reports',Configuration:'settings','Data Model':'settings','Activity Feed':'dashboard'};go(built[name]||'module:'+name);}
 function shell(){
- const nav=$('#nav');nav.innerHTML=`<button data-dest="Dashboards">⌂ Home</button><hr>${['Contacts','Deals','Companies','Tasks','Segments','Invoices'].map(n=>`<button data-dest="${n}">◇ ${n}</button>`).join('')}<div class="label">⌄ Marketing</div><button data-dest="Marketing Emails">✉ Marketing Emails</button><div class="label">⌄ Sales</div><button data-dest="Prospecting Agent">◎ Prospecting Agent</button><div class="label">⌄ Platform</div><button data-dest="Dashboards">▥ Dashboards</button><button data-dest="Workflows">⌘ Workflows</button><button id="more" aria-expanded="false">••• More ›</button><button data-dest="Configuration">⚙ Configuration</button>`;
+ const nav=$('#nav');nav.innerHTML=`<button data-dest="Dashboards">⌂ Home</button><hr>${['Contacts','Deals','Companies','Tasks','Inbox','Segments','Invoices'].map(n=>`<button data-dest="${n}">◇ ${n}</button>`).join('')}<div class="label">⌄ Marketing</div><button data-dest="Marketing Emails">✉ Marketing Emails</button><div class="label">⌄ Sales</div><button data-dest="Prospecting Agent">◎ Prospecting Agent</button><div class="label">⌄ Platform</div><button data-dest="Dashboards">▥ Dashboards</button><button data-dest="Workflows">⌘ Workflows</button><button id="more" aria-expanded="false">••• More ›</button><button data-dest="Configuration">⚙ Configuration</button>`;
  // User-created object types remain directly accessible.
  state.settings.types.filter(t=>!['contacts','companies','deals','tasks','tickets'].includes(t.id)).forEach(t=>{const b=document.createElement('button');b.textContent='◇ '+t.name;b.onclick=()=>go(t.id);nav.append(b)});
- nav.querySelectorAll('[data-dest]').forEach(b=>{b.onclick=()=>destination(b.dataset.dest);b.classList.toggle('active',page==={'Contacts':'contacts','Companies':'companies','Deals':'deals','Tasks':'tasks','Dashboards':'dashboard','Configuration':'settings'}[b.dataset.dest])});
+ nav.querySelectorAll('[data-dest]').forEach(b=>{b.onclick=()=>destination(b.dataset.dest);b.classList.toggle('active',page==={'Contacts':'contacts','Companies':'companies','Deals':'deals','Tasks':'tasks','Inbox':'inbox','Dashboards':'dashboard','Configuration':'settings'}[b.dataset.dest])});
  let menu=$('#more-menu');if(!menu){menu=document.createElement('div');menu.id='more-menu';menu.className='more-menu';menu.hidden=true;document.body.append(menu)}
  const populate=()=>{menu.innerHTML=`<div class="more-groups">${Object.keys(modules).map(g=>`<button data-group="${esc(g)}" class="${g===menuGroup?'selected':''}">${esc(g)} ›</button>`).join('')}</div><div class="more-items">${modules[menuGroup].map(n=>`<button data-item="${esc(n)}">${esc(n)}</button>`).join('')}</div>`;menu.querySelectorAll('[data-group]').forEach(b=>{b.onclick=()=>{menuGroup=b.dataset.group;populate()}});menu.querySelectorAll('[data-item]').forEach(b=>b.onclick=()=>{menu.hidden=true;destination(b.dataset.item)})};populate();menu.hidden=true;
  $('#more').onclick=()=>{menu.hidden=!menu.hidden;$('#more').setAttribute('aria-expanded',String(!menu.hidden))};
@@ -144,6 +145,7 @@ settingsView=function(){
  side.querySelectorAll('[data-setting]').forEach(b=>b.onclick=()=>{settingsSection=b.dataset.setting;render()});
  if(['Account Defaults','Properties','Objects'].includes(settingsSection)){const title=document.createElement('h1');title.textContent=settingsSection;body.prepend(title);const ps=body.querySelectorAll('.panel');ps.forEach((p,i)=>{p.hidden=settingsSection==='Properties'?i!==1:settingsSection==='Objects'?i===0:i!==0});body.querySelectorAll(':scope > h1')[1]?.remove();body.querySelector(':scope > p')?.remove();return}
  if(settingsSection==='Security'){ssoSettings(body);return}
+ if(['Inboxes','Integrations'].includes(settingsSection)){mailView(body);return}
  const tabs={'General':['Profile','Email','Calling','Calendar','Tasks','Security','Automation'],'Users & Teams':['Users','Teams'],'Security':['Login','Permissions'],'Inboxes':['Channels','SLAs','Sidebar Customization','Access'],'Forms':['Styles','Submission Settings'],'Domains & URLs':['Domains','Language Settings','Sitemap','SSL'],'Billing':['Defaults','Notifications'],'Payments Checkout':['Payment Methods','Billing & Shipping','Fees & Policies','Advanced Settings']}[settingsSection]||['Overview'];
  body.innerHTML=`<h1>${esc(settingsSection)}</h1><div class="settings-tabs">${tabs.map((t,i)=>`<button class="${i===0?'selected':''}">${esc(t)}</button>`).join('')}</div><div class="panel"><span class="pill">Planned feature</span><h2 id="setting-tab-title">${esc(tabs[0])}</h2><p>This settings area is included in the product design. Its underlying feature is not implemented in this local version.</p><p>Workspace defaults, custom properties, objects and pipelines are available in the sidebar.</p></div>`;body.querySelectorAll('.settings-tabs button').forEach(b=>b.onclick=()=>{body.querySelectorAll('.settings-tabs button').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');$('#setting-tab-title').textContent=b.textContent});
 };

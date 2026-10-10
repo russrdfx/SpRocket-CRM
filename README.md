@@ -6,7 +6,7 @@ A free, MIT-licensed, configurable CRM foundation.
 
 ## Run locally
 
-Requires Python 3.9 or later. The local demo needs no packages. Optional SSO requires the dependencies in [SSO setup](SSO.md).
+Requires Python 3.9 or later. The local demo needs no packages. Optional SSO and email integrations require the dependencies in [SSO setup](SSO.md).
 
 ```sh
 python3 server.py
@@ -26,10 +26,11 @@ Open http://127.0.0.1:8765. Set `PORT` to use another port and `SPROCKET_DB` to 
 - Live reports for record counts, pipeline values and activity totals.
 - Expanded two-column module navigation and searchable Settings categories with tabbed pages. Unimplemented sections are labeled **Planned feature**.
 - Record relationships and notes, call, email and meeting activity logs.
+- Personal Google and Microsoft inbox connections, manual sync, plain-text compose/reply, signatures, contact/deal matching and email follow-up tasks. See [Email setup](EMAIL.md); provider credentials and a stable token encryption key are required.
 - Overview counts and weighted value using configured probabilities.
 - Validation prevents removal of pipelines or stages still used by records.
 
-The workspace starts empty. No external CRM records or configuration are imported. Activity logs do not send email or place calls.
+The workspace starts empty. No external CRM records or configuration are imported. Activity logs do not send email or place calls. The separate Inbox compose/reply feature sends through a connected provider only when you choose Send.
 
 ## Optional sample data
 
@@ -50,14 +51,14 @@ Adds 13 fictional records (3 contacts, 2 companies, 3 deals, 3 tasks and 2 ticke
 ## Using the interface
 
 - Open Deals and choose **Board view**. Drag a card into a stage, including a different pipeline, or into **No pipeline**.
-- Click a contact to open its full details page. Use **Edit contact** or **Edit links** to edit properties and associations. Email and call shortcuts log activity; they do not send messages or place calls.
+- Click a contact to open its full details page. Use **Edit contact** or **Edit links** to edit properties and associations. Activity shortcuts log activity. The separate **Send email** button uses a connected account; calls are not placed.
 - Click a deal to see its details. Use **Edit deal** for fields and relationships; use **Activities** to search, filter and log notes, emails, calls or meetings. These are logs, not delivery tools.
 - Open **Configuration**: Account Defaults manages the workspace; Properties manages fields; Objects manages record types and pipelines.
 - Use **More → Reporting → Reports** for the three live summaries. Other menu areas show their implementation status.
 
 ## Current scope
 
-This is a local single-user development foundation, not a production deployment or functional CRM replacement. It binds to loopback only. Owner names are assignment labels, not login accounts. Team roles, audit history, collaboration, backups, an automation engine, inbox synchronization, email delivery, marketing, quotes, invoicing and richer reporting remain roadmap work. Do not expose this development server publicly.
+This is a local single-user development foundation, not a production deployment or functional CRM replacement. It binds to loopback only. Owner names are assignment labels, not login accounts. Team roles, audit history, collaboration, backups, an automation engine, background inbox synchronization, bulk email delivery, marketing, quotes, invoicing and richer reporting remain roadmap work. Do not expose this development server publicly.
 
 ## Optional OpenID Connect SSO
 
@@ -86,3 +87,9 @@ MIT. See LICENSE.
 The supplied SpRocket vector logos, full-color symbol, monochrome variants, favicon and app icons are in `web/assets/brand/`. The app uses the dark horizontal logo in navigation, the light logo on sign-in, and the full-color favicon. The blue, orange and navy palette is applied to primary brand surfaces and accents. See [brand guide](web/assets/brand/guidelines/BRAND-GUIDE.md) for the supplied asset status and usage guidance. Selected PNG fallbacks are included alongside the vector library.
 
 The canonical repository is [SpRocket-CRM](https://github.com/russrdfx/SpRocket-CRM). Its GitHub social preview uses the full-color logo with a 1280 × 640 canvas; editable vector and PNG versions are included in the logo directory.
+
+## Personal email
+
+Connect Google or Microsoft from **Inbox** or **Configuration → Integrations / Inboxes**. Setup instructions, supported scopes, privacy controls and limitations are in [EMAIL.md](EMAIL.md). Recent-message sync is manual and bounded. Sync automatically logs messages on contacts and linked deals, creates missing contacts, and links domain-based companies. The cache is owner-scoped under SSO; local demo mail is available to anyone using the local workspace. Provider registration and real-account integration checks remain necessary.
+
+The email update passed 45 automated tests covering existing CRM/SSO behavior and mocked email-provider flows, including automatic record creation, activity deduplication, encrypted credentials, account ownership and send safeguards. Real-provider verification is still required.
