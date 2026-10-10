@@ -9,7 +9,7 @@
 
 ## Delivered foundation
 
-Local persistent record management, generic typed fields, configurable record types and pipelines, assignment labels, record relationships, activity logs, list/board views and overview metrics. This is an initial development release, with no identity or team access layer.
+Local persistent record management, generic typed fields, configurable record types and pipelines, assignment labels, record relationships, activity logs, list/board views with drag-and-drop stage changes, enriched cards, stage totals and weighted values, a three-column deal details page, searchable activity timelines, live summary reports and overview metrics. Expanded navigation and searchable/tabbed Settings establish the product structure; unfinished areas are explicitly labeled as planned. An optional fictional sample-data script is included. This is an initial development release, with no identity or team access layer.
 
 ## Next releases
 
