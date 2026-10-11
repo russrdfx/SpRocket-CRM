@@ -4,6 +4,37 @@
 
 A free, MIT-licensed, configurable CRM foundation.
 
+## Screenshots
+
+These screenshots show the **v0.1.5 development preview**, using only clearly labeled fictional sample records and `.example` email addresses. Some preview features are newer than the published desktop release. Navigation also includes sections marked as planned within the app.
+
+**Dashboard — record counts, pipeline value and recent activity.**
+
+![SpRocket CRM dashboard with fictional sample data](docs/screenshots/dashboard.png)
+
+<details>
+<summary>Deal board, contact record and personal inbox</summary>
+
+### Deal board
+
+Drag deals between stages and see total and weighted values.
+
+![SpRocket CRM deal board with sample pipeline stages](docs/screenshots/deal-board.png)
+
+### Contact record
+
+Contact details, email activity and related companies, deals and tasks.
+
+![SpRocket CRM contact record with fictional email activity](docs/screenshots/contact-record.png)
+
+### Personal inbox
+
+Cached sample email with CRM matching and follow-up controls. This demonstration inbox contains no real mailbox credentials or messages.
+
+![SpRocket CRM personal inbox showing a fictional sample email](docs/screenshots/inbox.png)
+
+</details>
+
 ## Desktop app
 
 **Mac download:** [v0.1.3 preview release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/v0.1.3) for Apple Silicon Macs. The package passes strict signature integrity verification with an ad-hoc development signature; Developer ID signing and notarization remain planned. Avoid the defective v0.1.0 package.
