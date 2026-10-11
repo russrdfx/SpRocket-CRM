@@ -13,6 +13,12 @@ from desktop_bridge import DesktopBridge
 import sso_config
 import record_forms
 import crm_tools
+import workspace_tools
+import phone_numbers
+import enrichment
+import automation
+from calendar_service import CalendarService
+from recovery import Recovery
 from mail_service import MailService, MailError
 
 AUTH = OIDC()
@@ -31,6 +37,8 @@ def connect():
 
 
 MAIL = MailService(connect)
+CALENDAR = CalendarService(connect)
+RECOVERY = Recovery(connect,lambda:DB)
 
 def initialize():
     with connect() as db:
@@ -41,6 +49,10 @@ def initialize():
         ''')
         MAIL.initialize(db)
         crm_tools.initialize(db)
+        workspace_tools.initialize(db)
+        CALENDAR.initialize(db)
+        enrichment.initialize(db)
+        automation.initialize(db)
         if not db.execute('SELECT 1 FROM settings').fetchone():
             kinds = [
                 ('contacts', 'Contacts', [{'key': 'email', 'label': 'Email', 'type': 'email'}, {'key': 'phone', 'label': 'Phone', 'type': 'text'}]),
@@ -66,6 +78,7 @@ def validate_settings(data, previous, records):
         raise ValueError('Pipelines and owners must be lists.')
     if len(str(data.get('currency', ''))) != 3 or not str(data['currency']).isascii() or not str(data['currency']).isalpha():
         raise ValueError('Use a three-letter currency code.')
+    phone_numbers.country(data.get('phone_country'))
     ids = set()
     for typ in data['types']:
         ident = typ.get('id', '')
@@ -125,6 +138,7 @@ def validate_record(db, kind, body):
             raise ValueError('Invalid option for ' + field['label'])
         if field['type'] == 'date':
             datetime.strptime(value, '%Y-%m-%d')
+    phone_numbers.normalize_fields(body,[f['key'] for f in typ['fields'] if f['key'] in ('phone','mobile_phone','mobile_number')],phone_numbers.country(settings.get('phone_country')))
     if kind == 'deals' and 'line_items' in body:
         items = body['line_items']
         if not isinstance(items, list) or len(items)>100:
@@ -235,7 +249,14 @@ class Handler(BaseHTTPRequestHandler):
                 return self.redirect('/', [cookie, AUTH.cookie('sprocket_login', '', 0)])
             except Exception:
                 return self.reply(401, {'error': 'Sign-in failed or this identity is not allowed. Start a new login.'})
+        if path == '/calendar/callback/google':
+            try:
+                CALENDAR.finish('google',self.mail_owner(),parse_qs(urlparse(self.path).query),self.headers)
+                return self.redirect('/?calendar=connected',['sprocket_calendar=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0'])
+            except (MailError,ValueError,KeyError,TypeError):
+                return self.redirect('/?calendar=failed',['sprocket_calendar=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0'])
         if path.startswith('/mail/callback/'):
+
             try:
                 MAIL.finish(path.split('/')[-1], self.mail_owner(), parse_qs(urlparse(self.path).query), self.headers)
                 return self.redirect('/?mail=connected', ['sprocket_mail=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0'])
@@ -245,7 +266,12 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith('/api/'):
                 return self.reply(401, {'error': 'Sign-in required'})
             return self.redirect('/login')
+        if path=='/api/calendar':
+            return self.reply(200,CALENDAR.status(self.mail_owner()))
+        if path=='/api/automation':
+            with connect() as db:return self.reply(200,automation.status(db))
         if path in ('/api/cleanup','/api/reminders'):
+
             with connect() as db:
                 return self.reply(200,crm_tools.review(db) if path=='/api/cleanup' else crm_tools.reminders(db,self.mail_owner()))
         if path in ('/api/mail', '/api/mail/messages'):
@@ -265,8 +291,8 @@ class Handler(BaseHTTPRequestHandler):
             with connect() as db:
                 records = [dict(json.loads(r['body']), id=r['id'], kind=r['kind'], updated=r['updated']) for r in db.execute('SELECT * FROM records ORDER BY updated DESC')]
                 activities = [dict(json.loads(r['body']), id=r['id'], record_id=r['record_id'], created=r['created']) for r in db.execute('SELECT * FROM activities ORDER BY created DESC')]
-                return self.reply(200, {'settings': load_settings(db), 'records': records, 'activities': activities})
-        file = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/login': 'login.html', '/login.js': 'login.js', '/mail.js': 'mail.js', '/create.js': 'create.js', '/productivity.js': 'productivity.js'}.get(path)
+                return self.reply(200, {'settings': load_settings(db), 'records': records, 'activities': activities, 'views': workspace_tools.views(db,self.mail_owner())['views'], 'phone': {'countries':phone_numbers.countries()}})
+        file = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/login': 'login.html', '/login.js': 'login.js', '/mail.js': 'mail.js', '/create.js': 'create.js', '/productivity.js': 'productivity.js', '/workspace.js':'workspace.js', '/features.js':'features.js', '/phone.js':'phone.js'}.get(path)
         if path.startswith('/assets/brand/'):
             candidate = (ROOT / 'web' / path.lstrip('/')).resolve()
             asset_root = (ROOT / 'web/assets/brand').resolve()
@@ -299,11 +325,49 @@ class Handler(BaseHTTPRequestHandler):
                 return self.redirect('/login', [AUTH.logout(self.headers)])
         try:
             length = int(self.headers.get('Content-Length', 0))
-            if not 0 < length <= 1000000:
+            limit=33000000 if urlparse(self.path).path=='/api/backup/preview' and self.sso_admin() else 1000000
+            if not 0 < length <= limit:
                 raise ValueError('Request size must be between 1 byte and 1 MB.')
             data = json.loads(self.rfile.read(length))
             path = urlparse(self.path).path
             now = datetime.now(timezone.utc).isoformat()
+            if path=='/api/phone':
+                if not isinstance(data,dict):raise ValueError('Phone request must be an object.')
+                return self.reply(200,phone_numbers.format_phone(data.get('value',''),data.get('country') or phone_numbers.DEFAULT_COUNTRY,data.get('typing') is True))
+            if path.startswith(('/api/calendar/','/api/backup/','/api/automation/','/api/enrichment/')):
+                if self.headers.get('Origin') != (AUTH.origin if AUTH.enabled else 'http://' + self.headers.get('Host','')):
+                    return self.reply(403,{'error':'Same-origin browser request required.'})
+                if not isinstance(data,dict):raise ValueError('Request must be an object.')
+                if path.startswith(('/api/backup/','/api/automation/')) and not self.sso_admin():return self.reply(403,{'error':'Administrator access required.'})
+                owner=self.mail_owner();action=path.rsplit('/',1)[-1]
+                if path.startswith('/api/calendar/'):
+                    if action=='connect':
+                        location,cookie=CALENDAR.begin('google',owner)
+                        if DESKTOP.trusted(self.headers):
+                            cookies=[cookie];session=AUTH.cookie_value(self.headers,'sprocket_session')
+                            if session:cookies.append(AUTH.cookie('sprocket_session',session,600))
+                            location='/desktop/start?ticket='+DESKTOP.create(kind='calendar',location=location,cookies=cookies)
+                        return self.reply(200,{'url':location},[cookie])
+                    handlers={'sync':CALENDAR.sync,'log':CALENDAR.log,'disconnect':CALENDAR.disconnect}
+                    if action not in handlers:raise ValueError('Unknown calendar action.')
+                    return self.reply(200,handlers[action](owner,data))
+                if path.startswith('/api/backup/'):
+                    if action=='download':result=RECOVERY.download()
+                    elif action=='preview':result=RECOVERY.preview(owner,data,validate_settings,validate_record)
+                    elif action=='restore':
+                        with MAIL.lock,CALENDAR.lock:
+                            result=RECOVERY.apply(owner,data);MAIL.imports.clear();CALENDAR.imports.clear()
+                    else:raise ValueError('Unknown backup action.')
+                    return self.reply(200,result)
+                with connect() as db:
+                    if path.startswith('/api/enrichment/'):
+                        if action=='preview':result=enrichment.preview(db,owner,data)
+                        elif action=='apply':result=enrichment.apply(db,owner,data,validate_record)
+                        else:raise ValueError('Unknown enrichment action.')
+                    elif action=='save':result=automation.save(db,data)
+                    elif action in ('run','preview'):result=automation.inactive(db,validate_record,preview=action=='preview')
+                    else:raise ValueError('Unknown automation action.')
+                return self.reply(200,result)
             if path == '/api/profile':
                 if self.headers.get('Origin') != (AUTH.origin if AUTH.enabled else 'http://' + self.headers.get('Host', '')):
                     return self.reply(403, {'error': 'Same-origin browser request required.'})
@@ -351,7 +415,15 @@ class Handler(BaseHTTPRequestHandler):
                     return self.reply(400, {'error': 'Provider discovery failed. Check the issuer, HTTPS connectivity and RS256/client_secret_basic support.'})
             result={'ok':True}
             with connect() as db:
-                if path == '/api/merge':
+                if path == '/api/tools/view':
+                    result=workspace_tools.save_view(db,self.mail_owner(),data)
+                elif path == '/api/tools/csv-preview':
+                    result=workspace_tools.preview_import(db,self.mail_owner(),data,validate_record)
+                elif path == '/api/tools/csv-apply':
+                    result=workspace_tools.apply_import(db,self.mail_owner(),data,validate_record)
+                elif path == '/api/tools/csv-export':
+                    result=workspace_tools.export_csv(db,data)
+                elif path == '/api/merge':
                     result=crm_tools.merge(db,data)
                 elif path == '/api/task/complete':
                     result=crm_tools.complete_task(db,data)
@@ -364,10 +436,11 @@ class Handler(BaseHTTPRequestHandler):
                     body = data['body']
                     validate_record(db, data['kind'], body)
                     ident = data.get('id') or str(uuid.uuid4())
-                    old = db.execute('SELECT kind FROM records WHERE id=?', (ident,)).fetchone()
+                    old = db.execute('SELECT kind,body FROM records WHERE id=?', (ident,)).fetchone()
                     if old and old['kind'] != data['kind']:
                         raise ValueError('Record type cannot be changed.')
                     db.execute('INSERT INTO records VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET body=excluded.body, updated=excluded.updated', (ident, data['kind'], json.dumps(body), now))
+                    if data['kind']=='deals':automation.stage_changed(db,ident,json.loads(old['body']) if old else None,body,now,validate_record)
                 elif path == '/api/delete':
                     db.execute('DELETE FROM records WHERE id=?', (data['id'],))
                     for row in db.execute('SELECT * FROM records').fetchall():

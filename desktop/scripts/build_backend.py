@@ -9,5 +9,5 @@ os.environ.setdefault('PYINSTALLER_CONFIG_DIR', str(desktop/'build'/'cache'))
 subprocess.run([sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean', '--onedir',
     '--name', 'sprocket-server', '--distpath', str(desktop/'backend'),
     '--workpath', str(desktop/'build'), '--specpath', str(desktop/'build'),
-    '--collect-all', 'jwt', '--collect-all', 'cryptography',
+    '--collect-all', 'phonenumbers', '--collect-all', 'jwt', '--collect-all', 'cryptography',
     '--add-data', str(root/'web')+':web', str(root/'server.py')], check=True)

@@ -17,6 +17,7 @@ from urllib.request import Request, build_opener, HTTPRedirectHandler
 from urllib.error import HTTPError, URLError
 from auth import OIDC
 from crm_tools import PERSONAL_DOMAINS
+import phone_numbers
 
 GOOGLE_SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send'
 MICROSOFT_SCOPES = 'offline_access https://graph.microsoft.com/User.Read https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/Mail.Send'
@@ -36,7 +37,7 @@ class NoRedirect(HTTPRedirectHandler):
 def remote(url, data=None, headers=None, method=None):
     """Fixed provider URLs only; never follow redirects carrying credentials."""
     u = urlparse(url)
-    if u.scheme != 'https' or u.hostname not in {'accounts.google.com', 'oauth2.googleapis.com', 'gmail.googleapis.com', 'login.microsoftonline.com', 'graph.microsoft.com'} or u.username:
+    if u.scheme != 'https' or u.hostname not in {'accounts.google.com', 'oauth2.googleapis.com', 'gmail.googleapis.com', 'login.microsoftonline.com', 'graph.microsoft.com', 'www.googleapis.com', 'openidconnect.googleapis.com'} or u.username:
         raise MailError('Invalid mail provider URL.')
     try:
         with build_opener(NoRedirect()).open(Request(url, data=data, headers=headers or {}, method=method), timeout=15) as response:
@@ -222,6 +223,7 @@ class MailService:
                 raise MailError('Enter valid profile details without line breaks.')
             body[key]=value.strip()
         with self.connect() as db:
+            settings=json.loads(db.execute('SELECT body FROM settings WHERE id=1').fetchone()[0]);body['phone_country']=data.get('phone_country') or settings.get('phone_country') or phone_numbers.DEFAULT_COUNTRY;phone_numbers.normalize_fields(body,['phone'],phone_numbers.country(settings.get('phone_country')))
             db.execute('INSERT INTO user_profiles VALUES(?,?) ON CONFLICT(owner) DO UPDATE SET body=excluded.body',(owner,json.dumps(body)))
         return dict(ok=True,profile=body)
 

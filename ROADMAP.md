@@ -41,3 +41,11 @@ Next: signed/notarized Mac releases, clean-machine and live-provider testing, In
 Mac release validation now requires strict code-signature verification before and after ZIP extraction. v0.1.0 had invalid bundle integrity metadata; v0.1.1 adds ad-hoc development signing.
 
 Implemented data cleanup: exact contact-email/company-domain duplicate review, transactional reviewed merges retaining fields/links/activities, imported-record review and personal-domain company exclusion for new imports. Fuzzy matching and merge undo remain planned.
+
+## Latest workspace productivity development
+
+Implemented in development source: discoverable pipeline settings; personal saved filter views; mapped/reviewed CSV imports and scoped export; independent read-only Google Calendar connection with date-window pagination and reviewed meeting logging; source-backed company website suggestions with approval; opt-in stage/inactivity follow-up tasks with execution history; validated administrator database backup/restore with a safety copy. See [WORKSPACE.md](WORKSPACE.md) and [CALENDAR.md](CALENDAR.md). Live Google Calendar consent remains to be tested. Advanced enrichment providers, closed-app automation and older-schema browser restore remain future work.
+
+## Phone formatting delivered
+
+Country selection and local phone formatting for contact, company and profile fields, inline contact editing, a workspace country default, and normalization on record/profile saves and CSV imports. Incomplete or ambiguous input is preserved. Number verification remains outside this feature.

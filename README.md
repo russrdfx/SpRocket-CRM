@@ -37,7 +37,7 @@ Cached sample email with CRM matching and follow-up controls. This demonstration
 
 ## Desktop app
 
-**Mac download:** [v0.1.5 preview release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/v0.1.5) for Apple Silicon Macs. The package passes strict signature integrity verification with an ad-hoc development signature; Developer ID signing and notarization remain planned. Avoid the defective v0.1.0 package.
+**Mac download:** [v0.1.7 preview release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/v0.1.7) for Apple Silicon Macs. The package passes strict signature integrity verification with an ad-hoc development signature; Developer ID signing and notarization remain planned. Avoid the defective v0.1.0 package.
 
 An Apple Silicon Mac desktop installer now bundles the CRM and Python server, uses the full-color SpRocket icon, and keeps data outside the app. The preview build is ad-hoc signed for development and is not notarized. See [desktop installation, backups and build instructions](DESKTOP.md). Windows, Intel Mac and signed public releases remain planned.
 
@@ -162,3 +162,13 @@ Your top-right Profile & preferences menu supports editing your display name, jo
 See [Productivity guide](PRODUCTIVITY.md) for behavior and testing.
 
 Profile editing is available from the top-right **Profile & preferences** menu and **Configuration → General → Profile**. Display name, job title and phone are saved for the current sign-in identity (or the local workspace profile in demo mode). These changes are included in the v0.1.5 desktop preview linked above.
+
+### Configure deal pipelines
+
+Open **Settings → Pipelines → + Pipeline**, select **Deals**, enter a pipeline name, and add the stage names and probabilities. Save, then return to Deals to create a deal. **Configure pipelines & stages** is also available in Properties and the deal creation form. New workspaces begin without a pipeline so administrators can define their own process.
+
+### Workspace productivity additions
+
+Saved views and advanced record filters, reviewed CSV import/export, Google Calendar meeting logging, reviewed company website enrichment, opt-in follow-up task rules, and administrator backup/restore are implemented in the development source. See [WORKSPACE.md](WORKSPACE.md) for usage and limits, and [CALENDAR.md](CALENDAR.md) for Google setup. These additions require the next desktop package; installing an earlier release does not update automatically.
+
+Phone fields on contacts, companies and profiles support country selection, automatic international formatting and extensions. Configure a default country in Account Defaults. See [workspace instructions](WORKSPACE.md#phone-numbers).

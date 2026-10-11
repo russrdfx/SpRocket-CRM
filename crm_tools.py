@@ -37,6 +37,14 @@ def merge(db,data):
         if source in body.get('links',[]):
             body['links']=list(dict.fromkeys(target if x==source else x for x in body['links']))
             db.execute('UPDATE records SET body=?,updated=? WHERE id=?',(json.dumps(body),now,r['id']))
+    # Retain calendar logging identities when duplicate contacts are merged.
+    if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='calendar_logs'").fetchone():
+        for log in db.execute('SELECT * FROM calendar_logs WHERE record_id=?',(source,)).fetchall():
+            existing=db.execute('SELECT activity_id FROM calendar_logs WHERE account_id=? AND event_id=? AND record_id=?',(log['account_id'],log['event_id'],target)).fetchone()
+            if existing:
+                db.execute('DELETE FROM activities WHERE id=?',(log['activity_id'],))
+                db.execute('DELETE FROM calendar_logs WHERE account_id=? AND event_id=? AND record_id=?',(log['account_id'],log['event_id'],source))
+            else:db.execute('UPDATE calendar_logs SET record_id=? WHERE account_id=? AND event_id=? AND record_id=?',(target,log['account_id'],log['event_id'],source))
     # Keep one activity per message after combining two email-matched contacts.
     target_messages={json.loads(r['body']).get('mail_message_id') for r in db.execute('SELECT body FROM activities WHERE record_id=?',(target,))}
     for row in db.execute('SELECT * FROM activities WHERE record_id=?',(source,)).fetchall():

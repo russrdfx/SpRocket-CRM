@@ -8,11 +8,11 @@ The application bundle and ZIP distribution were built. The DMG attempt was bloc
 
 ## GitHub download
 
-The [v0.1.3 preview release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/v0.1.3) provides `SpRocket-CRM-0.1.3-arm64.zip` and a SHA-256 checksum. This Apple Silicon Mac build uses an ad-hoc development signature and is not notarized. Source pushes do not update release downloads; each package is published separately. Avoid the defective v0.1.0 package.
+The [v0.1.7 preview release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/v0.1.7) provides `SpRocket-CRM-0.1.7-arm64.zip` and a SHA-256 checksum. This Apple Silicon Mac build uses an ad-hoc development signature and is not notarized. Source pushes do not update release downloads; each package is published separately. Avoid the defective v0.1.0 package.
 
 ## Install and use
 
-Download and unzip `SpRocket-CRM-0.1.3-arm64.zip`. Quit any running SpRocket CRM, then move **SpRocket CRM.app** into Applications, replacing the previous copy. Launch the app. The workspace starts empty; existing development data is not included in the installer. macOS may block this development build. For a build you trust, use the approval option in System Settings → Privacy & Security. Public distribution should use a signed and notarized release.
+Download and unzip `SpRocket-CRM-0.1.7-arm64.zip`. Quit any running SpRocket CRM, then move **SpRocket CRM.app** into Applications, replacing the previous copy. Launch the app. The workspace starts empty; existing development data is not included in the installer. macOS may block this development build. For a build you trust, use the approval option in System Settings → Privacy & Security. Public distribution should use a signed and notarized release.
 
 The app starts its own server at `http://127.0.0.1:18765` and stops it on quit. Opening the application again focuses the existing window. If another process occupies that port, startup fails instead of connecting to another server. The browser development server on port 8765 can run separately.
 
@@ -99,3 +99,13 @@ Adds editable CRM profiles (display name, job title and phone), inherits Gmail S
 Profile editing is available from both the top-right menu and Configuration → General → Profile. Adds foreground automatic email checks, reviewed contact/company cleanup, task completion and reminders, and shared rich-text email/signature editing. This desktop preview includes the v0.1.4 profile/sender changes and is published as an Apple Silicon Mac ZIP on GitHub. Existing application data remains in the same application-support folder. The build uses ad-hoc signing and is not notarized.
 
 Validation: all 69 backend tests pass, including pagination/batch/deduplication checks. Email presentation and reminder timing checks passed. Isolated browser checks verified task completion, merge preview, signature persistence and bold composition. The freshly extracted ZIP passes strict deep signature verification, and its packaged backend serves state, cleanup, reminders and the productivity script. Real-provider send and operating-system notification delivery still need user testing.
+
+## v0.1.6 local productivity preview
+
+Includes the pipeline setup shortcuts, saved views, reviewed CSV imports, read-only Google Calendar, reviewed company website enrichment, follow-up task rules and administrator backup/restore. See WORKSPACE.md and CALENDAR.md. This preview is built locally; a GitHub release requires a separate publication step.
+
+## v0.1.7
+
+Includes the v0.1.6 workspace features and country-code selectors with local phone formatting for contacts, companies, profiles and inline editing. Configure the default country in Account Defaults. Extensions are preserved and incomplete numbers stay unchanged. Company phone fields are added without replacing custom properties. The Apple Silicon ZIP bundles the phone metadata; updating preserves the existing application-support database.
+
+Validation: 103 backend tests, email and productivity presentation checks, isolated browser contact creation and international inline saves, plus fresh ZIP signature and packaged endpoint verification. This development preview uses ad-hoc signing and is not notarized. Live Google Calendar consent and provider integration testing remain required.
