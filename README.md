@@ -6,7 +6,7 @@ A free, MIT-licensed, configurable CRM foundation.
 
 ## Screenshots
 
-These screenshots show the **v0.1.5 development preview**, using only clearly labeled fictional sample records and `.example` email addresses. Some preview features are newer than the published desktop release. Navigation also includes sections marked as planned within the app.
+These screenshots show the **v0.1.5 Mac preview**, using only clearly labeled fictional sample records and `.example` email addresses. Navigation also includes sections marked as planned within the app.
 
 **Dashboard — record counts, pipeline value and recent activity.**
 
@@ -37,7 +37,7 @@ Cached sample email with CRM matching and follow-up controls. This demonstration
 
 ## Desktop app
 
-**Mac download:** [v0.1.3 preview release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/v0.1.3) for Apple Silicon Macs. The package passes strict signature integrity verification with an ad-hoc development signature; Developer ID signing and notarization remain planned. Avoid the defective v0.1.0 package.
+**Mac download:** [v0.1.5 preview release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/v0.1.5) for Apple Silicon Macs. The package passes strict signature integrity verification with an ad-hoc development signature; Developer ID signing and notarization remain planned. Avoid the defective v0.1.0 package.
 
 An Apple Silicon Mac desktop installer now bundles the CRM and Python server, uses the full-color SpRocket icon, and keeps data outside the app. The preview build is ad-hoc signed for development and is not notarized. See [desktop installation, backups and build instructions](DESKTOP.md). Windows, Intel Mac and signed public releases remain planned.
 
@@ -161,4 +161,4 @@ Your top-right Profile & preferences menu supports editing your display name, jo
 
 See [Productivity guide](PRODUCTIVITY.md) for behavior and testing.
 
-Profile editing is available from the top-right **Profile & preferences** menu and **Configuration → General → Profile**. Display name, job title and phone are saved for the current sign-in identity (or the local workspace profile in demo mode). The v0.1.5 source contains these changes; the desktop download above remains the last published release until a new release is published.
+Profile editing is available from the top-right **Profile & preferences** menu and **Configuration → General → Profile**. Display name, job title and phone are saved for the current sign-in identity (or the local workspace profile in demo mode). These changes are included in the v0.1.5 desktop preview linked above.
