@@ -89,3 +89,13 @@ Adds date-range email import previews and batched imports, automatic ownership f
 ## v0.1.3
 
 Adds client-style email activity headers and bodies, sandboxed Google HTML email, compact dashboard previews, and a Contacts Lead stage column using Lifecycle stage. New imported contacts start at Lead. Existing imports can be re-imported to enrich formatted content without duplicate activities. All 57 backend tests and the email presentation checks pass. Published as an Apple Silicon Mac preview release, with an ad-hoc development signature and no Apple notarization.
+
+## v0.1.4 local build
+
+Adds editable CRM profiles (display name, job title and phone), inherits Gmail Send mail as display names using existing permissions, provides an optional per-inbox sender-name override and identity check, and logs the selected sender name. Existing account addresses and access roles remain fixed. All 60 backend tests and email presentation checks pass. These changes are included in the v0.1.5 source update; the v0.1.4 package was not published.
+
+## v0.1.5 source update and local build
+
+Profile editing is available from both the top-right menu and Configuration → General → Profile. Adds foreground automatic email checks, reviewed contact/company cleanup, task completion and reminders, and shared rich-text email/signature editing. This local build includes the v0.1.4 profile/sender changes. Source is updated on GitHub; publishing the local ZIP as a desktop release is a separate step. Existing application data remains in the same application-support folder. The build uses ad-hoc signing and is not notarized.
+
+Validation: 68 backend checks passed together, plus the added pagination/batch/deduplication check passed in the nine-test productivity suite. Email presentation and reminder timing checks passed. Isolated browser checks verified task completion, merge preview, signature persistence and bold composition. The freshly extracted ZIP passes strict deep signature verification, and its packaged backend serves state, cleanup, reminders and the productivity script. Real-provider send and operating-system notification delivery still need user testing.

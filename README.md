@@ -63,7 +63,7 @@ Open http://127.0.0.1:8765. Set `PORT` to use another port and `SPROCKET_DB` to 
 - Live reports for record counts, pipeline values and activity totals.
 - Expanded two-column module navigation and searchable Settings categories with tabbed pages. Unimplemented sections are labeled **Planned feature**.
 - Record relationships and notes, call, email and meeting activity logs.
-- Personal Google and Microsoft inbox connections, manual sync, plain-text compose/reply, signatures, contact/deal matching and email follow-up tasks. See [Email setup](EMAIL.md); provider credentials and a stable token encryption key are required.
+- Personal Google and Microsoft inbox connections, date-range imports, optional automatic sync, rich-text compose/reply, HTML signatures, contact/deal matching and email follow-up tasks. See [Email setup](EMAIL.md); provider credentials and a stable token encryption key are required.
 - Overview counts and weighted value using configured probabilities.
 - Validation prevents removal of pipelines or stages still used by records.
 
@@ -95,7 +95,7 @@ Adds 13 fictional records (3 contacts, 2 companies, 3 deals, 3 tasks and 2 ticke
 
 ## Current scope
 
-This is a local single-user development foundation, not a production deployment or functional CRM replacement. It binds to loopback only. Owner names are assignment labels, not login accounts. Team roles, audit history, collaboration, backups, an automation engine, background inbox synchronization, bulk email delivery, marketing, quotes, invoicing and richer reporting remain roadmap work. Do not expose this development server publicly.
+This is a local single-user development foundation, not a production deployment or functional CRM replacement. It binds to loopback only. Owner names are assignment labels, not login accounts. Team roles, audit history, collaboration, backups, an automation engine, closed-app inbox synchronization, bulk email delivery, marketing, quotes, invoicing and richer reporting remain roadmap work. Do not expose this development server publicly.
 
 ## Optional OpenID Connect SSO
 
@@ -127,7 +127,7 @@ The canonical repository is [SpRocket-CRM](https://github.com/russrdfx/SpRocket-
 
 ## Personal email
 
-Connect Google or Microsoft from **Inbox** or **Configuration → Integrations / Inboxes**. Setup instructions, supported scopes, privacy controls and limitations are in [EMAIL.md](EMAIL.md). Recent-message sync is manual and bounded. Sync automatically logs messages on contacts and linked deals, creates missing contacts, and links domain-based companies. The cache is owner-scoped under SSO; local demo mail is available to anyone using the local workspace. Provider registration and real-account integration checks remain necessary.
+Connect Google or Microsoft from **Inbox** or **Configuration → Integrations / Inboxes**. Setup instructions, supported scopes, privacy controls and limitations are in [EMAIL.md](EMAIL.md). Initial imports use a chosen date range; optional automatic checks run while the app is open. Sync automatically logs messages on contacts and linked deals, creates missing contacts, and links domain-based companies. The cache is owner-scoped under SSO; local demo mail is available to anyone using the local workspace. Provider registration and real-account integration checks remain necessary.
 
 The email update passed 45 automated tests covering existing CRM/SSO behavior and mocked email-provider flows, including automatic record creation, activity deduplication, encrypted credentials, account ownership and send safeguards. Real-provider verification is still required.
 
@@ -137,7 +137,7 @@ The top **Create** dropdown opens Contact, Company, Deal, Ticket or Task in a ri
 
 Contacts collect email, first/last name, owner, job title, phone, lifecycle stage and lead status. Companies collect domain/name, owner, industry/type, location, headcount, revenue, time zone, description and LinkedIn URL. Deals collect pipeline/stage, amount/date, owner/type/priority, relationships and description/quantity/price line items. A blank deal amount is calculated from its line items; an explicit amount is preserved. Tickets collect name, pipeline/status, description, source, owner, priority and create date. Tasks collect title, type, priority, relationships, assignee, queue, due date/time, reminder/repeat preferences and notes.
 
-Task reminder/repeat preferences are stored; automated notifications and recurring-task generation remain planned. Deal line items are saved data; a product catalog, quotes and invoicing remain planned. Pipelines are required when available, with a no-pipeline path for an unconfigured workspace. Contact names can be derived from first/last name or email; company names can be derived from domain.
+Tasks support completion, daily/weekly/monthly next occurrences, in-app reminders and optional desktop notifications while the app is open. Deal line items are saved data; a product catalog, quotes and invoicing remain planned. Pipelines are required when available, with a no-pipeline path for an unconfigured workspace. Contact names can be derived from first/last name or email; company names can be derived from domain.
 
 New default properties are added once without overwriting custom definitions or existing records. Configure labels/options and add custom properties through **Configure properties**. Later user removal of a default property is respected after the migration.
 
@@ -148,3 +148,17 @@ Record creation update validation: 48 automated tests pass. Browser checks verif
 Choose a date range and preview its message count before importing email. Imports process the entire selected range in batches, show progress, and avoid duplicate activities. New contacts belong to the signed-in user (or connected email address in local mode). Contact properties support direct editing with Save and Cancel, and owner selectors include the current user and connected inbox addresses. See [EMAIL.md](EMAIL.md).
 
 Email activities use a message layout with separate headers and body. Google HTML email is displayed in a restricted sandbox with remote content blocked. The Contacts Lead stage column uses Lifecycle stage; new imported contacts start at Lead.
+
+Your top-right Profile & preferences menu supports editing your display name, job title and phone. Gmail messages inherit the connected address’s configured sender name, with an optional override under Inbox → Sender & signature. Profiles do not alter account roles or provider identities.
+
+## Productivity tools
+
+- **Inbox → Import email** keeps the initial date-range preview. Enable automatic sync after import, or enable/pause it from the inbox toolbar. Checks run roughly once a minute while the CRM window is open.
+- **Data cleanup** lists exact email/domain duplicates, imported records and previously imported personal-domain companies. Review field differences and select the primary record before merging. Primary populated fields win; missing fields, relationships and activities are preserved. Merging removes the secondary record and cannot be undone.
+- Common personal email domains such as Gmail and Outlook create individual contacts without new domain companies. Existing records are preserved for review.
+- **Tasks** has open/completed filters and completion buttons. Repeating tasks advance on completion rather than generating duplicate task records. **Reminders** in the top bar supports snoozing and dismissing; desktop notifications require user permission.
+- **Inbox → Sender & signature** supports rich text / HTML, links and uploaded images under 150 KB. Compose and reply use the same formatting editor. Plain-text signature mode remains available.
+
+See [Productivity guide](PRODUCTIVITY.md) for behavior and testing.
+
+Profile editing is available from the top-right **Profile & preferences** menu and **Configuration → General → Profile**. Display name, job title and phone are saved for the current sign-in identity (or the local workspace profile in demo mode). The v0.1.5 source contains these changes; the desktop download above remains the last published release until a new release is published.

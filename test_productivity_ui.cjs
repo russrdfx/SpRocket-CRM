@@ -1,0 +1,11 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const source=fs.readFileSync(__dirname+'/web/productivity.js','utf8').split('const productivityShell=')[0];
+const ctx=vm.createContext({Date,Number,JSON,Boolean,esc:v=>String(v||'').replace(/</g,'&lt;')});vm.runInContext(source,ctx);
+const base={due_date:'2026-10-10',due_time:'09:00',reminder_preference:'15 minutes before'};
+assert.equal(ctx.reminderDue(base,new Date('2026-10-10T08:44:00')),false);
+assert.equal(ctx.reminderDue(base,new Date('2026-10-10T08:45:00')),true);
+assert.equal(ctx.reminderDue({...base,completed:true},new Date('2026-10-11T09:00:00')),false);
+assert.equal(ctx.reminderDue({...base,reminder_preference:'No reminder'},new Date('2026-10-11T09:00:00')),false);
+assert.notEqual(ctx.reminderFingerprint(base),ctx.reminderFingerprint({...base,due_date:'2026-10-11'}));
+assert.equal(ctx.plainHTML('<sample>\ntext'),'<div>&lt;sample><br>text</div>');
+console.log('Reminder timing and editor escaping checks passed');

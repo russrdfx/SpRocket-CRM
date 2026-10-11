@@ -106,6 +106,35 @@ class MailTest(unittest.TestCase):
             self.assertEqual(created[0]['links'],created[1]['links']);self.assertTrue(all(c['owner']=='me@example.test' for c in created))
             company=json.loads(db.execute("SELECT body FROM records WHERE kind='companies'").fetchone()[0]);self.assertEqual('newco.example',company['domain'])
 
+    def test_profile_validation_owner_isolation_and_gmail_sender_precedence(self):
+        self.account(expires=time.time()+600)
+        self.mail.save_profile(self.owner,dict(name='CRM Name',job_title='Sample title',phone='555-0100'))
+        self.assertEqual('',self.mail.profile('another-user')['name'])
+        with self.assertRaises(MailError):self.mail.save_profile(self.owner,dict(name='Name\r\nBcc: injected@example.test'))
+        def call(provider,token,path,*args):
+            if path.startswith('/settings/sendAs/'):
+                self.assertIn('me%40example.test',path)
+                return {'displayName':'Gmail Name'}
+            raw=BytesParser(policy=policy.default).parsebytes(base64.urlsafe_b64decode(args[0]['raw']))
+            self.assertEqual('Gmail Name <me@example.test>',str(raw['From']))
+            return {'id':'sent-provider'}
+        with patch.object(self.mail,'call',side_effect=call):self.mail.send(self.owner,dict(send_id='sender-precedence-123',account_id='account',to='person@example.test',subject='Sample',text='Sample body'))
+        self.assertEqual('Gmail Name',self.mail.status(self.owner)['accounts'][0]['provider_name'])
+        self.mail.post('preferences',self.owner,dict(account_id='account',days=30,signature='',sender_name='Renée Sample'))
+        with patch.object(self.mail,'call') as call:
+            name=self.mail.sender_name(self.owner,dict(id='account',provider='google',email='me@example.test'),'token')
+            self.assertEqual('Renée Sample',name);call.assert_not_called()
+        with self.assertRaises(MailError):self.mail.post('preferences',self.owner,dict(account_id='account',days=30,signature='',sender_name='Bad\nName'))
+
+    def test_sender_settings_failure_uses_cached_name_then_profile(self):
+        self.account(expires=time.time()+600);self.mail.save_profile(self.owner,dict(name='Fallback Name'))
+        account=dict(id='account',email='me@example.test',provider='google')
+        with patch.object(self.mail,'call',side_effect=MailError('Settings unavailable')):
+            self.assertEqual('Fallback Name',self.mail.sender_name(self.owner,account,'token'))
+        with patch.object(self.mail,'call',return_value={'displayName':'Provider Name'}):self.mail.sender_name(self.owner,account,'token')
+        with patch.object(self.mail,'call',side_effect=MailError('Settings unavailable')):
+            self.assertEqual('Provider Name',self.mail.sender_name(self.owner,account,'token'))
+
     def test_gmail_mime_reply_signature_and_no_duplicate_send(self):
         self.account(expires=time.time()+600);self.message();self.mail.post('preferences',self.owner,{'account_id':'account','days':7,'signature':'Sample signature'})
         data=dict(send_id='unique-send-id-12345',account_id='account',reply_id='message',to='person@example.test',subject='Re: Test',text='Sample reply')
@@ -114,14 +143,14 @@ class MailTest(unittest.TestCase):
             message=BytesParser(policy=policy.default).parsebytes(base64.urlsafe_b64decode(payload['raw']))
             self.assertEqual('<original@example.test>',message['In-Reply-To']);self.assertIn('Sample signature',message.get_content());self.assertEqual('thread',payload['threadId'])
             with self.assertRaises(MailError):self.mail.send(self.owner,data)
-            self.assertEqual(1,call.call_count)
+            self.assertEqual(2,call.call_count)
     def test_unknown_delivery_does_not_retry(self):
         self.account(expires=time.time()+600)
         data=dict(send_id='uncertain-send-12345',account_id='account',to='person@example.test',subject='Sample',text='Test')
         with patch.object(self.mail,'call',side_effect=MailError('Timed out')) as call:
             with self.assertRaises(MailError):self.mail.send(self.owner,data)
             with self.assertRaises(MailError):self.mail.send(self.owner,data)
-            self.assertEqual(1,call.call_count)
+            self.assertEqual(2,call.call_count)
     def test_microsoft_send_and_reply_adapter(self):
         self.account('microsoft',expires=time.time()+600);self.message()
         with patch.object(self.mail,'call',return_value={}) as call:
@@ -208,6 +237,12 @@ class MailTest(unittest.TestCase):
             self.assertEqual('Sample authenticated user',next(b for b in bodies if b.get('email')=='new@sample.test')['owner'])
 
 class MailHTTPTest(CRMTest):
+    def test_profile_requires_origin_and_returns_saved_display_name(self):
+        self.assertEqual(403,self.request('/api/profile',{'name':'Sample user'})[0])
+        self.assertEqual(200,self.request('/api/profile',{'name':'Sample user','job_title':'Sample title','phone':'555-0100'},self.url)[0])
+        self.assertEqual('Sample user',self.request('/api/auth')[1]['profile']['name'])
+        self.assertEqual(400,self.request('/api/profile',{'name':'Bad\nName'},self.url)[0])
+
     def test_mail_requires_origin_and_does_not_leak_missing_credentials(self):
         self.assertEqual(403,self.request('/api/mail/connect',{'provider':'google'})[0])
         status=self.request('/api/mail')[1];self.assertEqual(2,len(status['providers']));self.assertNotIn('secret',json.dumps(status['accounts']))

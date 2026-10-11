@@ -1,4 +1,4 @@
-function ownerNames(current=''){return [...new Set([...state.settings.owners,...(state.auth?.user?.name?[state.auth.user.name]:[]),...(state.mail?.accounts||[]).map(a=>a.email),...(current?[current]:[])])]}
+function ownerNames(current=''){return [...new Set([...state.settings.owners,...(state.auth?.profile?.name?[state.auth.profile.name]:[]),...(state.auth?.user?.name?[state.auth.user.name]:[]),...(state.mail?.accounts||[]).map(a=>a.email),...(current?[current]:[])])]}
 let state, page='dashboard', query='', board=false, pipeline='';
 const $=s=>document.querySelector(s), esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>crypto.randomUUID(), type=k=>state.settings.types.find(t=>t.id===k), pipe=id=>state.settings.pipelines.find(p=>p.id===id), stage=r=>r.kind==='contacts'?(r.lifecycle_stage||'—'):(pipe(r.pipeline)?.stages.find(s=>s.id===r.stage)?.name||'—');
@@ -16,6 +16,8 @@ function render(){
  if(page==='settings')return settingsView();
  if(page==='reports')return reportsView();
  if(page==='inbox')return mailView();
+ if(page==='cleanup')return cleanupView();
+ if(page==='tasks')return tasksView();
  if(page.startsWith('module:'))return plannedView(page.slice(7));
  if(page==='dashboard')return dashboard();
  if(!type(page)){page='dashboard';return render()}
@@ -106,7 +108,7 @@ const modules={
  'Agents':['Context','Agent Marketplace','Agent Hub'], 'Automation':['Workflows'], 'Reporting':['Dashboards','Reports'], 'Development':['Configuration']
 };
 let menuGroup='CRM';
-function destination(name){const built={Contacts:'contacts',Companies:'companies',Deals:'deals',Tickets:'tickets',Tasks:'tasks',Inbox:'inbox',Dashboards:'dashboard',Reports:'reports',Configuration:'settings','Data Model':'settings','Activity Feed':'dashboard'};go(built[name]||'module:'+name);}
+function destination(name){const built={Contacts:'contacts',Companies:'companies',Deals:'deals',Tickets:'tickets',Tasks:'tasks',Inbox:'inbox',Dashboards:'dashboard',Reports:'reports',Configuration:'settings','Data Model':'settings','Activity Feed':'dashboard','Data Quality':'cleanup'};go(built[name]||'module:'+name);}
 function shell(){
  const nav=$('#nav');nav.innerHTML=`<button data-dest="Dashboards">⌂ Home</button><hr>${['Contacts','Deals','Companies','Tasks','Inbox','Segments','Invoices'].map(n=>`<button data-dest="${n}">◇ ${n}</button>`).join('')}<div class="label">⌄ Marketing</div><button data-dest="Marketing Emails">✉ Marketing Emails</button><div class="label">⌄ Sales</div><button data-dest="Prospecting Agent">◎ Prospecting Agent</button><div class="label">⌄ Platform</div><button data-dest="Dashboards">▥ Dashboards</button><button data-dest="Workflows">⌘ Workflows</button><button id="more" aria-expanded="false">••• More ›</button><button data-dest="Configuration">⚙ Configuration</button>`;
  // User-created object types remain directly accessible.
@@ -116,7 +118,7 @@ function shell(){
  const populate=()=>{menu.innerHTML=`<div class="more-groups">${Object.keys(modules).map(g=>`<button data-group="${esc(g)}" class="${g===menuGroup?'selected':''}">${esc(g)} ›</button>`).join('')}</div><div class="more-items">${modules[menuGroup].map(n=>`<button data-item="${esc(n)}">${esc(n)}</button>`).join('')}</div>`;menu.querySelectorAll('[data-group]').forEach(b=>{b.onclick=()=>{menuGroup=b.dataset.group;populate()}});menu.querySelectorAll('[data-item]').forEach(b=>b.onclick=()=>{menu.hidden=true;destination(b.dataset.item)})};populate();menu.hidden=true;
  $('#more').onclick=()=>{menu.hidden=!menu.hidden;$('#more').setAttribute('aria-expanded',String(!menu.hidden))};
  document.onkeydown=e=>{if(e.key==='Escape'){menu.hidden=true;$('#more').setAttribute('aria-expanded','false')}};
- const identity=state.auth?.user,name=identity?.name||(state.auth?.enabled?'Signed-in user':'Local demo user');
+ const identity=state.auth?.user,name=state.auth?.profile?.name||identity?.name||(state.auth?.enabled?'Signed-in user':'Local demo user');
  const role=state.auth?.is_admin?(state.auth.enabled?'Account administrator':'Local administrator'):'Account member';
  const header=$('header');header.innerHTML=`<input id="global-search" aria-label="Search all records" placeholder="Search Sprocket CRM"><button id="quick-create">+ Create</button><div class="profile-wrap"><button id="profile-toggle" aria-expanded="false" aria-controls="profile-menu"><span class="profile-avatar">${esc(name.slice(0,1).toUpperCase())}</span><span>${esc(name)}</span><span aria-hidden="true">⌄</span></button><div id="profile-menu" class="profile-menu" hidden><div class="profile-summary"><b>${esc(name)}</b><span class="profile-role">${esc(role)}</span><small>${state.auth?.enabled?'Signed in with SSO':'Local demo · no authenticated identity'}</small><button id="profile-preferences">Profile & preferences</button></div><div class="profile-account"><small>Account</small><b>${esc(state.settings.name)}</b><button id="profile-account">Account settings</button></div>${state.auth?.is_admin?'<button id="profile-security">Security & SSO</button>':''}<button id="profile-help">About Sprocket CRM</button>${state.auth?.enabled?'<button id="sign-out">Sign out</button>':''}</div></div>`;
  const profileMenu=$('#profile-menu'),toggle=$('#profile-toggle');
@@ -124,7 +126,7 @@ function shell(){
  toggle.onclick=()=>{profileMenu.hidden=!profileMenu.hidden;toggle.setAttribute('aria-expanded',String(!profileMenu.hidden))};
  document.onclick=e=>{if(!e.target.closest('.profile-wrap'))closeProfile()};
  const originalKey=document.onkeydown;document.onkeydown=e=>{originalKey?.(e);if(e.key==='Escape'){const wasOpen=!profileMenu.hidden;closeProfile();if(wasOpen)toggle.focus()}};
- $('#profile-preferences').onclick=()=>{closeProfile();const m=$('#modal');m.innerHTML=`<h2>Profile & preferences</h2><label>Display name</label><p>${esc(name)}</p><label>Access</label><p>${esc(role)}</p>${identity?`<label>Identity subject</label><p>${esc(identity.subject)}</p><p>Profile identity is managed by your sign-in provider.</p>`:'<p>This is a local demo profile. Configure SSO to sign in with your own identity.</p>'}<button id="profile-settings">Open preferences</button><div class="actions"><button id="profile-close">Close</button></div>`;$('#profile-close').onclick=()=>m.close();$('#profile-settings').onclick=()=>{m.close();settingsSection='General';go('settings')};m.showModal()};
+ $('#profile-preferences').onclick=()=>{closeProfile();const m=$('#modal'),profile=state.auth?.profile||{};m.innerHTML=`<form id="profile-form"><h2>Profile & preferences</h2><label for="profile-name">Display name</label><input id="profile-name" name="name" maxlength="200" value="${esc(profile.name||identity?.name||'')}"><label for="profile-title">Job title</label><input id="profile-title" name="job_title" maxlength="200" value="${esc(profile.job_title)}"><label for="profile-phone">Phone</label><input id="profile-phone" name="phone" maxlength="80" value="${esc(profile.phone)}"><label>Access</label><p>${esc(role)}</p><p>Your profile applies in this CRM. Connected email uses the provider’s sender name unless you set an override in Inbox → Sender & signature.</p><p class="error" id="profile-error" role="alert"></p><div class="actions"><button type="button" id="profile-close">Cancel</button><button>Save profile</button></div></form>`;$('#profile-close').onclick=()=>m.close();$('#profile-form').onsubmit=async e=>{e.preventDefault();const button=e.target.querySelector('button:not([type])');button.disabled=true;try{await api('/api/profile',Object.fromEntries(new FormData(e.target)));m.close();await refresh();toast('Profile saved')}catch(err){$('#profile-error').textContent=err.message;button.disabled=false}};m.showModal()};
  $('#profile-account').onclick=()=>{closeProfile();settingsSection='Account Defaults';go('settings')};
  if($('#profile-security'))$('#profile-security').onclick=()=>{closeProfile();settingsSection='Security';go('settings')};
  $('#profile-help').onclick=()=>{closeProfile();const m=$('#modal');m.innerHTML='<h2>Sprocket CRM</h2><p>A configurable, open-source CRM.</p><p>This local version supports records, pipelines, activity logs and optional SSO.</p><div class="actions"><button id="about-close">Close</button></div>';$('#about-close').onclick=()=>m.close();m.showModal()};

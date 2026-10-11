@@ -12,6 +12,7 @@ from auth import OIDC
 from desktop_bridge import DesktopBridge
 import sso_config
 import record_forms
+import crm_tools
 from mail_service import MailService, MailError
 
 AUTH = OIDC()
@@ -39,6 +40,7 @@ def initialize():
         CREATE TABLE IF NOT EXISTS activities (id TEXT PRIMARY KEY, record_id TEXT NOT NULL REFERENCES records(id) ON DELETE CASCADE, body TEXT NOT NULL, created TEXT NOT NULL);
         ''')
         MAIL.initialize(db)
+        crm_tools.initialize(db)
         if not db.execute('SELECT 1 FROM settings').fetchone():
             kinds = [
                 ('contacts', 'Contacts', [{'key': 'email', 'label': 'Email', 'type': 'email'}, {'key': 'phone', 'label': 'Phone', 'type': 'text'}]),
@@ -212,7 +214,9 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/desktop/done' and DESKTOP.token:
             return self.reply(200, {'message': 'Sign-in complete. Return to SpRocket CRM.'})
         if path == '/api/auth':
-            return self.reply(200, {'enabled': AUTH.enabled, 'user': AUTH.user(self.headers) if AUTH.enabled else None, 'is_admin': self.sso_admin()})
+            user = AUTH.user(self.headers) if AUTH.enabled else None
+            profile = MAIL.profile(self.mail_owner()) if user or not AUTH.enabled else None
+            return self.reply(200, {'enabled': AUTH.enabled, 'user': user, 'profile': profile, 'is_admin': self.sso_admin()})
         if path == '/auth/login' and AUTH.enabled:
             try:
                 location, cookie = AUTH.begin()
@@ -241,6 +245,9 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith('/api/'):
                 return self.reply(401, {'error': 'Sign-in required'})
             return self.redirect('/login')
+        if path in ('/api/cleanup','/api/reminders'):
+            with connect() as db:
+                return self.reply(200,crm_tools.review(db) if path=='/api/cleanup' else crm_tools.reminders(db,self.mail_owner()))
         if path in ('/api/mail', '/api/mail/messages'):
             try:
                 owner = self.mail_owner()
@@ -259,7 +266,7 @@ class Handler(BaseHTTPRequestHandler):
                 records = [dict(json.loads(r['body']), id=r['id'], kind=r['kind'], updated=r['updated']) for r in db.execute('SELECT * FROM records ORDER BY updated DESC')]
                 activities = [dict(json.loads(r['body']), id=r['id'], record_id=r['record_id'], created=r['created']) for r in db.execute('SELECT * FROM activities ORDER BY created DESC')]
                 return self.reply(200, {'settings': load_settings(db), 'records': records, 'activities': activities})
-        file = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/login': 'login.html', '/login.js': 'login.js', '/mail.js': 'mail.js', '/create.js': 'create.js'}.get(path)
+        file = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/login': 'login.html', '/login.js': 'login.js', '/mail.js': 'mail.js', '/create.js': 'create.js', '/productivity.js': 'productivity.js'}.get(path)
         if path.startswith('/assets/brand/'):
             candidate = (ROOT / 'web' / path.lstrip('/')).resolve()
             asset_root = (ROOT / 'web/assets/brand').resolve()
@@ -270,7 +277,7 @@ class Handler(BaseHTTPRequestHandler):
         raw = (ROOT / 'web' / file).read_bytes()
         self.send_response(200)
         self.send_header('Content-Type', {'html': 'text/html', 'js': 'text/javascript', 'css': 'text/css', 'svg': 'image/svg+xml', 'png': 'image/png'}[file.split('.')[-1]])
-        self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; frame-ancestors 'none'")
+        self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; frame-ancestors 'none'")
         self.send_header('X-Content-Type-Options', 'nosniff')
         self.send_header('Content-Length', str(len(raw)))
         self.end_headers()
@@ -297,6 +304,11 @@ class Handler(BaseHTTPRequestHandler):
             data = json.loads(self.rfile.read(length))
             path = urlparse(self.path).path
             now = datetime.now(timezone.utc).isoformat()
+            if path == '/api/profile':
+                if self.headers.get('Origin') != (AUTH.origin if AUTH.enabled else 'http://' + self.headers.get('Host', '')):
+                    return self.reply(403, {'error': 'Same-origin browser request required.'})
+                if not isinstance(data,dict):raise MailError('Profile must be an object.')
+                return self.reply(200, MAIL.save_profile(self.mail_owner(),data))
             if path.startswith('/api/mail/'):
                 if self.headers.get('Origin') != (AUTH.origin if AUTH.enabled else 'http://' + self.headers.get('Host', '')):
                     return self.reply(403, {'error': 'Same-origin browser request required.'})
@@ -337,8 +349,15 @@ class Handler(BaseHTTPRequestHandler):
                     return self.reply(200, {'ok': True, 'message': 'Provider discovery verified. Client credentials and real sign-in still require an integration test.'})
                 except Exception:
                     return self.reply(400, {'error': 'Provider discovery failed. Check the issuer, HTTPS connectivity and RS256/client_secret_basic support.'})
+            result={'ok':True}
             with connect() as db:
-                if path == '/api/settings':
+                if path == '/api/merge':
+                    result=crm_tools.merge(db,data)
+                elif path == '/api/task/complete':
+                    result=crm_tools.complete_task(db,data)
+                elif path == '/api/reminder':
+                    result=crm_tools.reminder(db,self.mail_owner(),data)
+                elif path == '/api/settings':
                     validate_settings(data, load_settings(db), db.execute('SELECT * FROM records').fetchall())
                     db.execute('UPDATE settings SET body=? WHERE id=1', (json.dumps(data),))
                 elif path == '/api/record':
@@ -362,7 +381,7 @@ class Handler(BaseHTTPRequestHandler):
                     db.execute('INSERT INTO activities VALUES (?,?,?,?)', (str(uuid.uuid4()), data['record_id'], json.dumps({'type': data['type'], 'text': data['text']}), now))
                 else:
                     return self.reply(404, {'error': 'Not found'})
-            self.reply(200, {'ok': True})
+            self.reply(200, result)
         except (ValueError, KeyError, TypeError, sqlite3.IntegrityError) as error:
             self.reply(400, {'error': str(error)})
 

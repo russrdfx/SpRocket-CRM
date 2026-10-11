@@ -11,11 +11,12 @@ import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
-from email.utils import getaddresses
+from email.utils import getaddresses, formataddr
 from urllib.parse import urlencode, quote, urlparse
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 from urllib.error import HTTPError, URLError
 from auth import OIDC
+from crm_tools import PERSONAL_DOMAINS
 
 GOOGLE_SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send'
 MICROSOFT_SCOPES = 'offline_access https://graph.microsoft.com/User.Read https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/Mail.Send'
@@ -92,6 +93,32 @@ def safe_email_html(value):
     parser=EmailHTML();parser.feed(value[:200000]);parser.close();return ''.join(parser.output)
 
 
+def html_text(value):
+    from html.parser import HTMLParser
+    class Text(HTMLParser):
+        def __init__(self):super().__init__();self.parts=[]
+        def handle_data(self,data):self.parts.append(data)
+        def handle_starttag(self,tag,attrs):
+            if tag=='br':self.parts.append('\n')
+        def handle_endtag(self,tag):
+            if tag in {'p','div','br','li','tr','h1','h2','h3'}:self.parts.append('\n')
+    parser=Text();parser.feed(value);return ''.join(parser.parts).strip()
+
+
+def inline_images(html):
+    images=[]
+    def replace(match):
+        kind,encoded=match.group(1).lower(),match.group(2)
+        try:body=base64.b64decode(encoded,validate=True)
+        except ValueError:raise MailError('Invalid signature image.') from None
+        if len(body)>150000 or len(images)>=8:raise MailError('Use at most 8 small images (150 KB each).')
+        cid='sprocket-'+str(uuid.uuid4())
+        images.append(dict(cid=cid,kind=kind,data=body))
+        return 'src="cid:'+cid+'"'
+    result=re.sub(r'src="data:image/(png|jpeg|gif|webp);base64,([A-Za-z0-9+/=]+)"',replace,html)
+    return result,images
+
+
 def gmail_message(m):
     headers = {h['name'].lower(): h['value'] for h in m.get('payload', {}).get('headers', [])}
     def plain(part):
@@ -125,6 +152,10 @@ class MailService:
 
     def initialize(self, db):
         db.executescript('''
+        CREATE TABLE IF NOT EXISTS user_profiles (owner TEXT PRIMARY KEY, body TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS mail_sender_names (account_id TEXT PRIMARY KEY REFERENCES mail_accounts(id) ON DELETE CASCADE, override_name TEXT NOT NULL DEFAULT '', provider_name TEXT NOT NULL DEFAULT '');
+        CREATE TABLE IF NOT EXISTS mail_auto (account_id TEXT PRIMARY KEY REFERENCES mail_accounts(id) ON DELETE CASCADE,enabled INTEGER NOT NULL DEFAULT 0,watermark TEXT NOT NULL,checked REAL NOT NULL DEFAULT 0,job_id TEXT NOT NULL DEFAULT '',status TEXT NOT NULL DEFAULT 'Ready',error TEXT NOT NULL DEFAULT '');
+        CREATE TABLE IF NOT EXISTS mail_html_signatures (account_id TEXT PRIMARY KEY REFERENCES mail_accounts(id) ON DELETE CASCADE,html TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS mail_accounts (id TEXT PRIMARY KEY, owner TEXT NOT NULL, provider TEXT NOT NULL, email TEXT NOT NULL, tokens TEXT NOT NULL, signature TEXT NOT NULL DEFAULT '', days INTEGER NOT NULL DEFAULT 30, last_sync TEXT NOT NULL DEFAULT '', UNIQUE(owner,provider,email));
         CREATE TABLE IF NOT EXISTS mail_messages (id TEXT PRIMARY KEY, account_id TEXT NOT NULL REFERENCES mail_accounts(id) ON DELETE CASCADE, provider_id TEXT NOT NULL, body TEXT NOT NULL, UNIQUE(account_id,provider_id));
         CREATE TABLE IF NOT EXISTS mail_logs (message_id TEXT NOT NULL REFERENCES mail_messages(id) ON DELETE CASCADE, record_id TEXT NOT NULL REFERENCES records(id) ON DELETE CASCADE, PRIMARY KEY(message_id,record_id));
@@ -169,7 +200,46 @@ class MailService:
             for account in accounts:
                 row = db.execute('SELECT selection FROM mail_ranges WHERE account_id=?',(account['id'],)).fetchone()
                 account['import_range'] = json.loads(row[0]) if row else {'preset': str(account['days'])}
+                identity = db.execute('SELECT override_name,provider_name FROM mail_sender_names WHERE account_id=?',(account['id'],)).fetchone()
+                account['sender_name'] = identity[0] if identity else ''
+                account['provider_name'] = identity[1] if identity else ''
+                auto=db.execute('SELECT enabled,status,error,watermark FROM mail_auto WHERE account_id=?',(account['id'],)).fetchone()
+                account['auto'] = dict(auto) if auto else dict(enabled=False,status='Paused',error='')
+                signature=db.execute('SELECT html FROM mail_html_signatures WHERE account_id=?',(account['id'],)).fetchone()
+                account['signature_html'] = signature[0] if signature else ''
         return dict(providers=providers, accounts=accounts)
+
+    def profile(self, owner):
+        with self.connect() as db:
+            row=db.execute('SELECT body FROM user_profiles WHERE owner=?',(owner,)).fetchone()
+            return json.loads(row[0]) if row else dict(name='',job_title='',phone='')
+
+    def save_profile(self, owner, data):
+        body={}
+        for key,maximum in [('name',200),('job_title',200),('phone',80)]:
+            value=data.get(key,'')
+            if not isinstance(value,str) or len(value)>maximum or any(ord(c)<32 or ord(c)==127 for c in value):
+                raise MailError('Enter valid profile details without line breaks.')
+            body[key]=value.strip()
+        with self.connect() as db:
+            db.execute('INSERT INTO user_profiles VALUES(?,?) ON CONFLICT(owner) DO UPDATE SET body=excluded.body',(owner,json.dumps(body)))
+        return dict(ok=True,profile=body)
+
+    def sender_name(self, owner, account, token):
+        with self.connect() as db:
+            row=db.execute('SELECT override_name,provider_name FROM mail_sender_names WHERE account_id=?',(account['id'],)).fetchone()
+        override,cached = (row[0],row[1]) if row else ('','')
+        if override and account['provider']=='google':return override
+        try:
+            response=self.call(account['provider'],token,'/settings/sendAs/'+quote(account['email'],safe='') if account['provider']=='google' else '/me?$select=displayName')
+            name=response.get('displayName','')
+            if not isinstance(name,str) or len(name)>200 or any(ord(c)<32 or ord(c)==127 for c in name):name=''
+            cached=name.strip()
+            with self.connect() as db:
+                db.execute('INSERT INTO mail_sender_names(account_id,provider_name) VALUES(?,?) ON CONFLICT(account_id) DO UPDATE SET provider_name=excluded.provider_name',(account['id'],cached))
+        except MailError:
+            pass # Preserve the last known sender identity during a settings outage.
+        return cached or (self.profile(owner)['name'] if account['provider']=='google' else '')
 
     def begin(self, provider, owner):
         cfg = self.config(provider)
@@ -277,19 +347,19 @@ class MailService:
                 host = urlparse(raw if '://' in raw else '//'+raw).hostname or ''
                 if host.removeprefix('www.') == domain.removeprefix('www.'):
                     company = r['id']; break
-            if not company:
+            if not company and domain not in PERSONAL_DOMAINS:
                 company = str(uuid.uuid4())
                 body = dict(name=domain,domain=domain,links=[],notes='Automatically created from an email domain. Company identity has not been verified.',record_source='Email sync')
                 db.execute('INSERT INTO records VALUES(?,?,?,?)',(company,'companies',json.dumps(body),now))
                 created_companies += 1
             if not matches:
                 ident = str(uuid.uuid4())
-                body = dict(lifecycle_stage='Lead',owner=account.get('crm_owner') or account['email'],name=display.strip()[:300] or address,email=address,links=[company],notes='Automatically created from a synced email correspondent.',record_source='Email sync')
+                body = dict(lifecycle_stage='Lead',owner=account.get('crm_owner') or account['email'],name=display.strip()[:300] or address,email=address,links=[company] if company else [],notes='Automatically created from a synced email correspondent.',record_source='Email sync')
                 db.execute('INSERT INTO records VALUES(?,?,?,?)',(ident,'contacts',json.dumps(body),now))
                 created_contacts += 1
             else:
                 for ident,body in matches:
-                    if company not in body.get('links',[]):
+                    if company and company not in body.get('links',[]):
                         body['links'] = body.get('links',[])+[company]
                         db.execute('UPDATE records SET body=?,updated=? WHERE id=?',(json.dumps(body),now,ident))
         return created_contacts,created_companies
@@ -366,7 +436,9 @@ class MailService:
                     path = '/messages?'+urlencode(params)
                 else:
                     stamp = lambda dt: dt.strftime('%Y-%m-%dT%H:%M:%SZ')
-                    path = '/me/messages?'+urlencode({'$top':100,'$select':'id','$filter':f'receivedDateTime ge {stamp(lower)} and receivedDateTime lt {stamp(upper)}'})
+                    criteria=f'receivedDateTime ge {stamp(lower)} and receivedDateTime lt {stamp(upper)}'
+                    if data.get('_automatic'):criteria='('+criteria+') or (sentDateTime ge '+stamp(lower)+' and sentDateTime lt '+stamp(upper)+')'
+                    path = '/me/messages?'+urlencode({'$top':100,'$select':'id','$filter':criteria})
                 self.imports = {k:v for k,v in self.imports.items() if v['expires'] > time.time()}
                 if len(self.imports) >= 100: raise MailError('Too many previews. Try again later.')
                 ident = secrets.token_urlsafe(32)
@@ -405,7 +477,7 @@ class MailService:
             if job['path']: raise MailError('Finish previewing the range before importing.')
             with self.connect() as db:
                 account = self.account(db,owner,ident)
-            account['crm_owner'] = (data or {}).get('_crm_owner') or account['email']
+            account['crm_owner'] = self.profile(owner)['name'] or (data or {}).get('_crm_owner') or account['email']
             token, provider = self.access(account), account['provider']
             ids = job['ids'][job['index']:job['index']+10]
             messages = []
@@ -420,6 +492,10 @@ class MailService:
             contacts_created = companies_created = logged = 0
             with self.connect() as db:
                 for m in messages:
+                    previous=db.execute('SELECT body FROM mail_messages WHERE account_id=? AND provider_id=?',(ident,m['provider_id'])).fetchone()
+                    if previous and m.get('direction')=='sent':
+                        saved=json.loads(previous[0])
+                        if 'data:image/' in saved.get('html',''):m['html']=saved['html']
                     db.execute('INSERT INTO mail_messages VALUES(?,?,?,?) ON CONFLICT(account_id,provider_id) DO UPDATE SET body=excluded.body', (str(uuid.uuid4()),ident,m['provider_id'],json.dumps(m)))
                     ident_row = db.execute('SELECT id FROM mail_messages WHERE account_id=? AND provider_id=?',(ident,m['provider_id'])).fetchone()
                     m['id'] = ident_row[0]
@@ -427,11 +503,49 @@ class MailService:
                     contacts_created += c; companies_created += co
                     logged += self.log_message(db,m)
                 db.execute('UPDATE mail_accounts SET last_sync=? WHERE id=?',(now,ident))
-                db.execute('INSERT INTO mail_ranges VALUES(?,?) ON CONFLICT(account_id) DO UPDATE SET selection=excluded.selection',(ident,json.dumps(job['selection'])))
+                if not job.get('automatic'):
+                    db.execute('INSERT INTO mail_ranges VALUES(?,?) ON CONFLICT(account_id) DO UPDATE SET selection=excluded.selection',(ident,json.dumps(job['selection'])))
             job['index'] += len(ids)
             for key, value in [('contacts_created',contacts_created),('companies_created',companies_created),('logged',logged)]: job[key] += value
             job['expires'] = time.time()+3600
             return dict(ok=True,count=job['index'],total=len(job['ids']),done=job['index']==len(job['ids']),contacts_created=job['contacts_created'],companies_created=job['companies_created'],logged=job['logged'])
+
+    def auto_setting(self, owner, data):
+        enabled=data.get('enabled')
+        if not isinstance(enabled,bool):raise MailError('Choose enable or pause.')
+        with self.lock,self.connect() as db:
+            account=self.account(db,owner,data['account_id'])
+            if enabled and not account['last_sync']:raise MailError('Import your chosen history range first.')
+            db.execute('INSERT INTO mail_auto(account_id,enabled,watermark) VALUES(?,?,?) ON CONFLICT(account_id) DO UPDATE SET enabled=excluded.enabled,error=\'\'',(account['id'],int(enabled),datetime.now(timezone.utc).isoformat()))
+        return dict(ok=True)
+
+    def auto_tick(self, owner, data):
+        with self.lock:
+            with self.connect() as db:
+                rows=[dict(r) for r in db.execute('SELECT s.*,a.owner FROM mail_auto s JOIN mail_accounts a ON a.id=s.account_id WHERE a.owner=? AND s.enabled=1',(owner,))]
+            busy=False;changed=False
+            for row in rows:
+                if not row['job_id'] and time.time()-row['checked']<60:continue
+                ident=row['account_id'];job=self.imports.get(row['job_id']);job_id=row['job_id']
+                try:
+                    if not job or job['expires']<time.time():
+                        now=datetime.now(timezone.utc)
+                        lower=datetime.fromisoformat(row['watermark'])-timedelta(days=1)
+                        preview=self.preview(owner,dict(account_id=ident,preset='custom',start=lower.date().isoformat(),end=now.date().isoformat(),_automatic=True))
+                        job_id=preview['import_id'];job=self.imports[job_id];job['automatic']=True;job['watermark']=now.isoformat()
+                    elif job['path']:
+                        self.preview(owner,dict(account_id=ident,import_id=job_id))
+                    if not job['path']:
+                        result=self.sync(owner,ident,dict(import_id=job_id,_crm_owner=data.get('_crm_owner')))
+                        changed=changed or bool(result['count'])
+                        if result['done']:
+                            with self.connect() as db:db.execute("UPDATE mail_auto SET job_id='',watermark=?,checked=?,error='',status=? WHERE account_id=?",(job['watermark'],time.time(),'Up to date',ident))
+                            continue
+                    busy=True
+                    with self.connect() as db:db.execute('UPDATE mail_auto SET job_id=?,error=\'\',status=? WHERE account_id=?',(job_id,'Syncing '+str(job['index'])+' of '+str(len(job['ids']))+' messages',ident))
+                except MailError as error:
+                    with self.connect() as db:db.execute("UPDATE mail_auto SET job_id='',checked=?,error=?,status='Needs attention' WHERE account_id=?",(time.time(),str(error),ident))
+            return dict(ok=True,busy=busy,changed=changed)
 
     def message(self, db, owner, ident):
         row = db.execute('SELECT m.* FROM mail_messages m JOIN mail_accounts a ON a.id=m.account_id WHERE m.id=? AND a.owner=?',(ident,owner)).fetchone()
@@ -465,12 +579,26 @@ class MailService:
             with self.connect() as db:
                 account = self.account(db,owner,data['account_id'])
                 reply = self.message(db,owner,data['reply_id']) if data.get('reply_id') else None
+            account['crm_owner'] = self.profile(owner)['name'] or data.get('_crm_owner') or account['email']
             if reply and reply['account_id'] != account['id']: raise MailError('Reply must use the original email account.')
             recipient = str(data.get('to','')).strip()
             if len(recipient)>320 or '\r' in recipient or '\n' in recipient or not re.fullmatch(r'[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+',recipient): raise MailError('Enter one valid recipient email address.')
             subject, text = str(data.get('subject','')).strip(), str(data.get('text','')).strip()
             if not subject or len(subject)>500 or '\r' in subject or '\n' in subject or not text or len(text)>50000: raise MailError('Subject and message are required (maximum 500 / 50,000 characters).')
-            if account['signature']: text += '\n\n'+account['signature']
+            raw_html=data.get('html','')
+            if not isinstance(raw_html,str) or len(raw_html)>200000:raise MailError('Message formatting is too large.')
+            html=safe_email_html(raw_html) if raw_html else ''
+            with self.connect() as db:
+                signature=db.execute('SELECT html FROM mail_html_signatures WHERE account_id=?',(account['id'],)).fetchone()
+            signature_html=signature[0] if signature else ''
+            if signature_html:
+                html=(html or '<p>'+__import__('html').escape(text).replace('\n','<br>')+'</p>')+'<br>'+signature_html
+                text+='\n\n'+(account['signature'] or html_text(signature_html))
+            elif account['signature']:
+                text += '\n\n'+account['signature']
+                if html:html+='<br><p>'+__import__('html').escape(account['signature']).replace('\n','<br>')+'</p>'
+            if len(html)>200000:raise MailError('Message and signature together exceed the formatting limit.')
+            delivery_html,images=inline_images(html)
             token, provider = self.access(account), account['provider']
             send_id = data.get('send_id', '')
             if not isinstance(send_id, str) or not re.fullmatch(r'[a-zA-Z0-9_-]{16,100}', send_id):
@@ -479,14 +607,19 @@ class MailService:
                 if db.execute('SELECT 1 FROM mail_sends WHERE owner=? AND send_id=?', (owner,send_id)).fetchone():
                     raise MailError('This send was already attempted. Check Sent mail before composing again.')
                 db.execute('INSERT INTO mail_sends VALUES(?,?,?)', (owner,send_id,'attempted'))
+            sender_name = self.sender_name(owner,account,token)
+            sender_header = formataddr((sender_name,account['email'])) if sender_name else account['email']
             # Never automatically retry a send: delivery may have succeeded before a timeout.
             if provider == 'google':
                 message = EmailMessage()
-                message['From'],message['To'],message['Subject'] = account['email'],recipient,subject
+                message['From'],message['To'],message['Subject'] = sender_header,recipient,subject
                 if reply and reply.get('message_id'):
                     if '\r' in reply['message_id'] or '\n' in reply['message_id']: raise MailError('Invalid reply header.')
                     message['In-Reply-To']=reply['message_id']; message['References']=reply['message_id']
                 message.set_content(text)
+                if html:
+                    message.add_alternative(delivery_html,subtype='html')
+                    for image in images:message.get_payload()[-1].add_related(image['data'],maintype='image',subtype=image['kind'],cid='<'+image['cid']+'>',filename='signature.'+image['kind'],disposition='inline')
                 payload = {'raw':base64.urlsafe_b64encode(message.as_bytes()).decode()}
                 if reply: payload['threadId']=reply['thread_id']
                 result = self.call(provider,token,'/messages/send',payload)
@@ -496,11 +629,13 @@ class MailService:
                     # Graph's reply API preserves the recipient and subject of the original thread.
                     if recipient.lower() not in addresses(reply['sender']) or subject != ('Re: '+reply['subject'] if not reply['subject'].lower().startswith('re:') else reply['subject']):
                         raise MailError('For a Microsoft reply, keep the original recipient and reply subject.')
-                    self.call(provider,token,'/me/messages/'+quote(reply['provider_id'],safe='')+'/reply',{'comment':text})
+                    reply_body={'comment':text}
+                    if html:reply_body={'message':dict(body=dict(contentType='HTML',content=delivery_html),attachments=[dict(**{'@odata.type':'#microsoft.graph.fileAttachment'},name='signature.'+i['kind'],contentType='image/'+i['kind'],contentId=i['cid'],isInline=True,contentBytes=base64.b64encode(i['data']).decode()) for i in images])}
+                    self.call(provider,token,'/me/messages/'+quote(reply['provider_id'],safe='')+'/reply',reply_body)
                 else:
-                    self.call(provider,token,'/me/sendMail',dict(message=dict(subject=subject,body=dict(contentType='Text',content=text),toRecipients=[dict(emailAddress=dict(address=recipient))]),saveToSentItems=True))
+                    self.call(provider,token,'/me/sendMail',dict(message=dict(subject=subject,body=dict(contentType='HTML' if html else 'Text',content=delivery_html if html else text),attachments=[dict(**{'@odata.type':'#microsoft.graph.fileAttachment'},name='signature.'+i['kind'],contentType='image/'+i['kind'],contentId=i['cid'],isInline=True,contentBytes=base64.b64encode(i['data']).decode()) for i in images],toRecipients=[dict(emailAddress=dict(address=recipient))]),saveToSentItems=True))
                 provider_id = 'local-sent-'+str(uuid.uuid4())
-            m = dict(provider_id=provider_id,thread_id=reply['thread_id'] if reply else '',subject=subject,sender=account['email'],to=recipient,cc='',text=text,date=datetime.now(timezone.utc).isoformat(),message_id='',direction='sent')
+            m = dict(provider_id=provider_id,thread_id=reply['thread_id'] if reply else '',subject=subject,sender=(sender_name+' <'+account['email']+'>' if sender_name else account['email']),to=recipient,cc='',text=text,html=html,date=datetime.now(timezone.utc).isoformat(),message_id='',direction='sent')
             with self.connect() as db:
                 ident=str(uuid.uuid4())
                 db.execute('INSERT INTO mail_messages VALUES(?,?,?,?)',(ident,account['id'],provider_id,json.dumps(m)))
@@ -511,19 +646,32 @@ class MailService:
             return dict(ok=True,message_id=ident,message='Provider accepted the message. Delivery is not guaranteed; see Sent mail.')
 
     def post(self, action, owner, data):
+        if action == 'auto':return self.auto_setting(owner,data)
+        if action == 'tick':return self.auto_tick(owner,data)
         if action == 'preview': return self.preview(owner,data)
         if action == 'sync': return self.sync(owner,data['account_id'],data)
         if action == 'send': return self.send(owner,data)
         if action == 'log': return self.log(owner,data['message_id'])
         if action == 'task': return self.task(owner,data)
+        if action == 'identity':
+            with self.connect() as db:account=self.account(db,owner,data['account_id'])
+            return dict(ok=True,name=self.sender_name(owner,account,self.access(account)),email=account['email'])
         with self.lock, self.connect() as db:
             self.account(db,owner,data['account_id'])
             if action == 'disconnect':
                 db.execute('DELETE FROM mail_accounts WHERE id=?',(data['account_id'],))
                 return dict(ok=True)
             if action == 'preferences':
+                name=data.get('sender_name','')
+                if not isinstance(name,str) or len(name)>200 or any(ord(c)<32 or ord(c)==127 for c in name):raise MailError('Sender name must be up to 200 characters without line breaks.')
                 days, signature = data.get('days'), data.get('signature','')
                 if days not in (7,30,90) or not isinstance(signature,str) or len(signature)>2000: raise MailError('Choose 7, 30 or 90 days and a signature up to 2,000 characters.')
+                db.execute('INSERT INTO mail_sender_names(account_id,override_name) VALUES(?,?) ON CONFLICT(account_id) DO UPDATE SET override_name=excluded.override_name',(data['account_id'],name.strip()))
+                existing=db.execute('SELECT html FROM mail_html_signatures WHERE account_id=?',(data['account_id'],)).fetchone()
+                html=data.get('signature_html',existing[0] if existing else '')
+                if not isinstance(html,str) or len(html)>200000:raise MailError('HTML signature is too large.')
+                inline_images(safe_email_html(html))
+                db.execute('INSERT INTO mail_html_signatures VALUES(?,?) ON CONFLICT(account_id) DO UPDATE SET html=excluded.html',(data['account_id'],safe_email_html(html)))
                 db.execute('UPDATE mail_accounts SET days=?,signature=? WHERE id=?',(days,signature,data['account_id']))
                 return dict(ok=True)
         raise MailError('Unknown email action.')

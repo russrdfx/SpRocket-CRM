@@ -13,11 +13,11 @@ Local persistent record management, generic typed fields, configurable record ty
 
 ## Personal email delivered
 
-Google and Microsoft personal inbox adapters now share a connection UI, encrypted tokens, manual bounded message import, plain-text compose/reply, signatures, contact/deal matching, automatic contact/domain-company creation and shared activity logging and follow-up tasks. See [EMAIL.md](EMAIL.md). Live-provider registration and consent tests remain required. Next email work: background incremental sync, attachments, richer composition, shared inboxes and assignment.
+Google and Microsoft personal inbox adapters now share a connection UI, encrypted tokens, date-range historical imports, optional foreground automatic sync, rich-text compose/reply, HTML signatures, contact/deal matching, automatic contact/domain-company creation and shared activity logging and follow-up tasks. See [EMAIL.md](EMAIL.md). Live-provider registration and consent tests remain required. Next email work: provider delta/history cursors, closed-app sync, incoming attachments, shared inboxes and assignment.
 
 ## Record creation delivered
 
-Create dropdown and type-specific side panels for contacts, companies, deals, tickets and tasks, with searchable associations, custom fields, create-and-add-another, additive property migration and editable deal line items. Tasks store queue, due time and reminder/repeat preferences; automated scheduling and notifications remain future work.
+Create dropdown and type-specific side panels for contacts, companies, deals, tickets and tasks, with searchable associations, custom fields, create-and-add-another, additive property migration and editable deal line items. Tasks support completion, due dates/times, in-app reminders, optional foreground desktop notifications and daily/weekly/monthly next occurrences on completion. Closed-app scheduling remains future work.
 
 ## Next releases
 
@@ -39,3 +39,5 @@ Implemented: Electron launcher, bundled Python backend, Apple Silicon Mac DMG bu
 Next: signed/notarized Mac releases, clean-machine and live-provider testing, Intel Mac and Windows packaging, and automatic updates.
 
 Mac release validation now requires strict code-signature verification before and after ZIP extraction. v0.1.0 had invalid bundle integrity metadata; v0.1.1 adds ad-hoc development signing.
+
+Implemented data cleanup: exact contact-email/company-domain duplicate review, transactional reviewed merges retaining fields/links/activities, imported-record review and personal-domain company exclusion for new imports. Fuzzy matching and merge undo remain planned.
