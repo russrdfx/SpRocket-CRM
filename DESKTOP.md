@@ -8,11 +8,11 @@ The application bundle and ZIP distribution were built. The DMG attempt was bloc
 
 ## GitHub download
 
-The [v0.1.7 preview release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/v0.1.7) provides `SpRocket-CRM-0.1.7-arm64.zip` and a SHA-256 checksum. This Apple Silicon Mac build uses an ad-hoc development signature and is not notarized. Source pushes do not update release downloads; each package is published separately. Avoid the defective v0.1.0 package.
+The [v0.1.8 preview release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/v0.1.8) provides `SpRocket-CRM-0.1.8-arm64.zip` and a SHA-256 checksum. This Apple Silicon Mac build uses an ad-hoc development signature and is not notarized. Source pushes do not update release downloads; each package is published separately. Avoid the defective v0.1.0 package.
 
 ## Install and use
 
-Download and unzip `SpRocket-CRM-0.1.7-arm64.zip`. Quit any running SpRocket CRM, then move **SpRocket CRM.app** into Applications, replacing the previous copy. Launch the app. The workspace starts empty; existing development data is not included in the installer. macOS may block this development build. For a build you trust, use the approval option in System Settings → Privacy & Security. Public distribution should use a signed and notarized release.
+Download and unzip `SpRocket-CRM-0.1.8-arm64.zip`. Quit any running SpRocket CRM, then move **SpRocket CRM.app** into Applications, replacing the previous copy. Launch the app. The workspace starts empty; existing development data is not included in the installer. macOS may block this development build. For a build you trust, use the approval option in System Settings → Privacy & Security. Public distribution should use a signed and notarized release.
 
 The app starts its own server at `http://127.0.0.1:18765` and stops it on quit. Opening the application again focuses the existing window. If another process occupies that port, startup fails instead of connecting to another server. The browser development server on port 8765 can run separately.
 
@@ -109,3 +109,9 @@ Includes the pipeline setup shortcuts, saved views, reviewed CSV imports, read-o
 Includes the v0.1.6 workspace features and country-code selectors with local phone formatting for contacts, companies, profiles and inline editing. Configure the default country in Account Defaults. Extensions are preserved and incomplete numbers stay unchanged. Company phone fields are added without replacing custom properties. The Apple Silicon ZIP bundles the phone metadata; updating preserves the existing application-support database.
 
 Validation: 103 backend tests, email and productivity presentation checks, isolated browser contact creation and international inline saves, plus fresh ZIP signature and packaged endpoint verification. This development preview uses ad-hoc signing and is not notarized. Live Google Calendar consent and provider integration testing remain required.
+
+## v0.1.8
+
+Simplifies record lists by removing the duplicate search box and moving filters into a dropdown with an active-filter count. The top search remains available across the CRM. Import/export is in Configuration → Import & Export, with record-type selection and all-record or saved-view export scope. CSV mapping and reviewed import behavior are retained.
+
+The Apple Silicon Mac preview retains the same database location and uses ad-hoc signing without Apple notarization. Browser checks verify filtering, saving a view, scoped export counts and the import entry point. Backend and presentation checks, plus fresh archive signature and packaged interface checks, are required before publication.

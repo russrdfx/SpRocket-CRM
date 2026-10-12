@@ -37,7 +37,7 @@ Cached sample email with CRM matching and follow-up controls. This demonstration
 
 ## Desktop app
 
-**Mac download:** [v0.1.7 preview release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/v0.1.7) for Apple Silicon Macs. The package passes strict signature integrity verification with an ad-hoc development signature; Developer ID signing and notarization remain planned. Avoid the defective v0.1.0 package.
+**Mac download:** [v0.1.8 preview release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/v0.1.8) for Apple Silicon Macs. The package passes strict signature integrity verification with an ad-hoc development signature; Developer ID signing and notarization remain planned. Avoid the defective v0.1.0 package.
 
 An Apple Silicon Mac desktop installer now bundles the CRM and Python server, uses the full-color SpRocket icon, and keeps data outside the app. The preview build is ad-hoc signed for development and is not notarized. See [desktop installation, backups and build instructions](DESKTOP.md). Windows, Intel Mac and signed public releases remain planned.
 
@@ -172,3 +172,5 @@ Open **Settings → Pipelines → + Pipeline**, select **Deals**, enter a pipeli
 Saved views and advanced record filters, reviewed CSV import/export, Google Calendar meeting logging, reviewed company website enrichment, opt-in follow-up task rules, and administrator backup/restore are implemented in the development source. See [WORKSPACE.md](WORKSPACE.md) for usage and limits, and [CALENDAR.md](CALENDAR.md) for Google setup. These additions require the next desktop package; installing an earlier release does not update automatically.
 
 Phone fields on contacts, companies and profiles support country selection, automatic international formatting and extensions. Configure a default country in Account Defaults. See [workspace instructions](WORKSPACE.md#phone-numbers).
+
+Record-list filters are grouped in a compact dropdown. CSV imports and exports are managed in Configuration → Import & Export, with a record-type selector and all-record or saved-view export scope.
