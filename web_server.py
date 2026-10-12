@@ -3,7 +3,7 @@ import base64,hashlib,io,json,os,sqlite3,threading,time
 from email.message import Message
 from http import HTTPStatus
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit,parse_qs
 from web_accounts import Accounts
 from web_database import Database
 
@@ -27,6 +27,8 @@ server.MAIL.connect=server.connect
 server.CALENDAR.connect=server.connect
 server.initialize()
 accounts=Accounts(server.connect,origin,os.environ.get('SPROCKET_SETUP_TOKEN',''));accounts.initialize()
+from web_google import GoogleSignIn,GoogleSignInError
+google=GoogleSignIn(accounts);google.initialize()
 with server.connect() as db:db.execute("CREATE TABLE IF NOT EXISTS web_calendar_auto(account_id TEXT PRIMARY KEY REFERENCES calendar_accounts(id) ON DELETE CASCADE,start_date TEXT NOT NULL,end_date TEXT NOT NULL,enabled INTEGER NOT NULL DEFAULT 0,checked DOUBLE PRECISION NOT NULL DEFAULT 0,error TEXT NOT NULL DEFAULT '')")
 server.AUTH=accounts
 
@@ -50,9 +52,26 @@ class WebHandler(server.Handler):
             self.status=200;self.send_header('Content-Type','text/javascript');self.wfile.write((server.ROOT/'web'/path[1:]).read_bytes());return
         if path=='/login':return self.html('web-login.html')
         if path=='/auth/login':return self.redirect('/login')
-        if path=='/api/web/status':return self.reply(200,{'setup_required':not accounts.ready()})
+        if path=='/api/web/status':return self.reply(200,{'setup_required':not accounts.ready(),'google_available':google.available()})
+        if path=='/auth/google':
+            try:
+                query=parse_qs(urlsplit(self.path).query);location,cookie=google.begin(self.headers,query.get('invite',[''])[0])
+                return self.redirect(location,[cookie])
+            except Exception:return self.redirect('/login?google_error=unavailable')
+        if path=='/auth/google/callback':
+            try:
+                cookie=google.finish(parse_qs(urlsplit(self.path).query),self.headers)
+                return self.redirect('/',[cookie,accounts.cookie('sprocket_google_login','',0)])
+            except GoogleSignInError as error:
+                # Return only our own admission guidance, never provider payloads or credentials.
+                self.status=200;self.send_header('Content-Type','text/html; charset=utf-8')
+                from html import escape
+                self.wfile.write(('<!doctype html><html lang="en"><meta charset="utf-8"><title>Google sign-in</title><link rel="stylesheet" href="/style.css"><body class="login-page"><section class="panel"><h1>Google sign-in</h1><p>'+escape(str(error))+'</p><a href="/login">Return to sign in</a></section></body></html>').encode());return
+            except Exception:return self.redirect('/login?google_error=failed')
+
         if not accounts.user(self.headers) and path not in ('/api/auth','/style.css') and not path.startswith('/assets/brand/'):
             return self.reply(401,{'error':'Sign-in required'}) if path.startswith('/api/') else self.redirect('/setup' if not accounts.ready() else '/login')
+        if path=='/api/web/google':return self.reply(200,{'available':google.available(),'linked':google.linked(accounts.user(self.headers))})
         if path=='/api/web/calendar-auto':
             owner=self.mail_owner()
             with server.connect() as db:rows=[dict(r) for r in db.execute('SELECT s.* FROM web_calendar_auto s JOIN calendar_accounts a ON a.id=s.account_id WHERE a.owner=?',(owner,))]

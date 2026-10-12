@@ -22,7 +22,7 @@ class Accounts:
         CREATE TABLE IF NOT EXISTS web_sessions(token TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES web_users(id) ON DELETE CASCADE,expires DOUBLE PRECISION NOT NULL);
         CREATE TABLE IF NOT EXISTS web_invites(token TEXT PRIMARY KEY,email TEXT NOT NULL,role TEXT NOT NULL,expires DOUBLE PRECISION NOT NULL);
         CREATE TABLE IF NOT EXISTS web_attempts(key TEXT PRIMARY KEY,count INTEGER NOT NULL,reset_at DOUBLE PRECISION NOT NULL);
-        ''')
+        ''');db.execute("ALTER TABLE web_sessions ADD COLUMN IF NOT EXISTS method TEXT NOT NULL DEFAULT 'password'")
     cookie=OIDC.cookie
     cookie_value=staticmethod(OIDC.cookie_value)
     def ready(self):
@@ -31,8 +31,8 @@ class Accounts:
         token=self.cookie_value(headers,'sprocket_session')
         if not token:return None
         with self.connect() as db:
-            row=db.execute('SELECT u.id,u.email,u.name,u.role FROM web_sessions s JOIN web_users u ON u.id=s.user_id WHERE s.token=? AND s.expires>? AND u.active=1',(digest(token),time.time())).fetchone()
-        return dict(subject=row['id'],email=row['email'],name=row['name'],role=row['role']) if row else None
+            row=db.execute('SELECT u.id,u.email,u.name,u.role,s.method FROM web_sessions s JOIN web_users u ON u.id=s.user_id WHERE s.token=? AND s.expires>? AND u.active=1',(digest(token),time.time())).fetchone()
+        return dict(subject=row['id'],email=row['email'],name=row['name'],role=row['role'],method=row['method']) if row else None
     def logout(self,headers):
         with self.connect() as db:db.execute('DELETE FROM web_sessions WHERE token=?',(digest(self.cookie_value(headers,'sprocket_session')),))
         return self.cookie('sprocket_session','',0)
@@ -51,7 +51,12 @@ class Accounts:
         if not row or not valid:raise ValueError('Email or password is incorrect.')
         token=secrets.token_urlsafe(32)
         with self.connect() as db:
-            db.execute('DELETE FROM web_attempts WHERE key=?',(key,));db.execute('DELETE FROM web_sessions WHERE expires<?',(now,));db.execute('INSERT INTO web_sessions VALUES (?,?,?)',(digest(token),row['id'],now+28800))
+            db.execute('DELETE FROM web_attempts WHERE key=?',(key,));db.execute('DELETE FROM web_sessions WHERE expires<?',(now,));db.execute('INSERT INTO web_sessions(token,user_id,expires) VALUES (?,?,?)',(digest(token),row['id'],now+28800))
+        return self.cookie('sprocket_session',token,28800)
+    def session(self,db,ident,headers,method='password'):
+        token=secrets.token_urlsafe(32);now=time.time()
+        db.execute('DELETE FROM web_sessions WHERE token=? OR expires<?',(digest(self.cookie_value(headers,'sprocket_session')),now))
+        db.execute('INSERT INTO web_sessions(token,user_id,expires,method) VALUES (?,?,?,?)',(digest(token),ident,now+28800,method))
         return self.cookie('sprocket_session',token,28800)
     def register(self,data,setup=False):
         email=email_address(data.get('email',''));name=str(data.get('name','')).strip();password=password_hash(data.get('password',''))

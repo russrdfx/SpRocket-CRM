@@ -14,7 +14,7 @@ class WebDeployment(unittest.TestCase):
     def tearDownClass(cls):cls.env.stop()
     def setUp(self):
         with self.web.server.connect() as db:
-            db.execute('TRUNCATE web_users,web_invites,web_attempts,records,user_profiles,mail_accounts,calendar_accounts,calendar_logs,web_provider_config,saved_views CASCADE')
+            db.execute('TRUNCATE web_users,web_invites,web_attempts,web_google_pending,records,user_profiles,mail_accounts,calendar_accounts,calendar_logs,web_provider_config,saved_views CASCADE')
     def request(self,path,data=None,cookie='',host='127.0.0.1:18766',origin='http://127.0.0.1:18766'):
         raw=json.dumps(data).encode() if data is not None else b''
         env=dict(PATH_INFO=path,REQUEST_METHOD='POST' if data is not None else 'GET',HTTP_HOST=host,HTTP_ORIGIN=origin,HTTP_COOKIE=cookie,CONTENT_TYPE='application/json',CONTENT_LENGTH=str(len(raw)),REMOTE_ADDR='127.0.0.1',**{'wsgi.input':io.BytesIO(raw)})
@@ -123,3 +123,86 @@ class WebDeployment(unittest.TestCase):
             os.environ['GOOGLE_MAIL_CLIENT_ID']='';os.environ['GOOGLE_MAIL_CLIENT_SECRET']=''
             self.web.web_provider.apply()
             self.assertEqual(os.environ['GOOGLE_MAIL_CLIENT_SECRET'],'sample-render-secret')
+
+    def google_attempt(self,cookie='',invite=''):
+        from urllib.parse import urlsplit,parse_qs
+        location,browser=self.web.google.begin({'Cookie':cookie},invite)
+        params=parse_qs(urlsplit(location).query)
+        return params,browser.split(';')[0]
+    def google_claims(self,params,email='admin@example.com',subject='sample-google-subject'):
+        return dict(sub=subject,email=email,email_verified=True,nonce=params['nonce'][0],aud=params['client_id'][0])
+    def test_google_existing_account_requires_explicit_link_then_persists(self):
+        from web_accounts import Accounts
+        from web_google import GoogleSignIn,GoogleSignInError
+        admin=self.setup_admin()
+        with patch.dict(os.environ,{'GOOGLE_MAIL_CLIENT_ID':'sample-client.apps.googleusercontent.com','GOOGLE_MAIL_CLIENT_SECRET':'sample-secret'}):
+            params,browser=self.google_attempt()
+            self.assertEqual(params['scope'],['openid email profile'])
+            with patch.object(self.web.google,'exchange',return_value=self.google_claims(params)):
+                with self.assertRaises(GoogleSignInError):self.web.google.finish(dict(state=params['state'],code=['sample-code']),{'Cookie':browser})
+            params,browser=self.google_attempt(admin)
+            claims=self.google_claims(params)
+            with patch.object(self.web.google,'exchange',return_value=claims):
+                google_cookie=self.web.google.finish(dict(state=params['state'],code=['sample-code']),{'Cookie':admin+'; '+browser}).split(';')[0]
+                with self.assertRaises(GoogleSignInError):self.web.google.finish(dict(state=params['state'],code=['sample-code']),{'Cookie':admin+'; '+browser})
+            restarted=Accounts(self.web.server.connect,self.web.origin,'')
+            user=restarted.user({'Cookie':google_cookie});self.assertEqual(user['method'],'google');self.assertEqual(user['role'],'admin')
+            self.assertIsNone(restarted.user({'Cookie':admin}))
+            self.assertTrue(GoogleSignIn(restarted).linked(user))
+            params,browser=self.google_attempt()
+            with patch.object(self.web.google,'exchange',return_value=self.google_claims(params)):
+                returned=self.web.google.finish(dict(state=params['state'],code=['sample-code']),{'Cookie':browser})
+            self.assertEqual(restarted.user({'Cookie':returned})['subject'],user['subject'])
+    def test_google_invited_join_has_no_password_and_keeps_invited_role(self):
+        admin=self.setup_admin();invite=self.request('/api/web/invite',dict(email='member@example.com',role='member'),admin)['body']['url'].split('token=')[1]
+        with patch.dict(os.environ,{'GOOGLE_MAIL_CLIENT_ID':'sample-client.apps.googleusercontent.com','GOOGLE_MAIL_CLIENT_SECRET':'sample-secret'}):
+            params,browser=self.google_attempt(invite=invite)
+            with patch.object(self.web.google,'exchange',return_value=self.google_claims(params,'member@example.com','sample-member-sub')):
+                cookie=self.web.google.finish(dict(state=params['state'],code=['sample-code']),{'Cookie':browser})
+            user=self.web.accounts.user({'Cookie':cookie});self.assertEqual(user['role'],'member')
+            self.assertEqual(self.request('/api/settings',{},cookie)['status'],403)
+            with self.web.server.connect() as db:
+                self.assertEqual(db.execute('SELECT password FROM web_users WHERE id=?',(user['subject'],)).fetchone()[0],'!')
+                self.assertIsNone(db.execute('SELECT 1 FROM web_invites').fetchone())
+            self.assertEqual(self.request('/api/web/login',dict(email='member@example.com',password='SamplePassword123!'))['status'],400)
+    def test_google_rejects_wrong_browser_email_nonce_and_unverified_claim(self):
+        from web_google import GoogleSignInError
+        admin=self.setup_admin()
+        with patch.dict(os.environ,{'GOOGLE_MAIL_CLIENT_ID':'sample-client.apps.googleusercontent.com','GOOGLE_MAIL_CLIENT_SECRET':'sample-secret'}):
+            params,browser=self.google_attempt(admin)
+            with patch.object(self.web.google,'exchange') as exchange:
+                with self.assertRaises(GoogleSignInError):self.web.google.finish(dict(state=params['state'],code=['sample-code']),{'Cookie':admin+'; sprocket_google_login=wrong'})
+                exchange.assert_not_called()
+            for changes in [dict(email='other@example.com'),dict(nonce='wrong'),dict(email_verified=False),dict(azp='wrong')]:
+                params,browser=self.google_attempt(admin)
+                with patch.object(self.web.google,'exchange',return_value=dict(self.google_claims(params),**changes)):
+                    with self.assertRaises(GoogleSignInError):self.web.google.finish(dict(state=params['state'],code=['sample-code']),{'Cookie':admin+'; '+browser})
+            self.assertFalse(self.web.google.linked(self.web.accounts.user({'Cookie':admin})))
+            params,browser=self.google_attempt(admin)
+            with self.web.server.connect() as db:
+                encrypted=db.execute('SELECT body FROM web_google_pending WHERE state=?',(__import__('web_accounts').digest(params['state'][0]),)).fetchone()[0]
+                self.assertNotIn(params['nonce'][0],encrypted)
+                db.execute('UPDATE web_google_pending SET expires=0')
+            with self.assertRaises(GoogleSignInError):self.web.google.finish(dict(state=params['state'],code=['sample-code']),{'Cookie':admin+'; '+browser})
+    def test_google_token_signature_issuer_audience_and_expiry_validation(self):
+        import jwt,time
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        from types import SimpleNamespace
+        key=rsa.generate_private_key(public_exponent=65537,key_size=2048)
+        admin=self.setup_admin()
+        with patch.dict(os.environ,{'GOOGLE_MAIL_CLIENT_ID':'sample-client.apps.googleusercontent.com','GOOGLE_MAIL_CLIENT_SECRET':'sample-secret'}):
+            params,browser=self.google_attempt(admin)
+            attempt=dict(client=params['client_id'][0],verifier='sample-verifier')
+            good=dict(self.google_claims(params),iss='https://accounts.google.com',iat=int(time.time()),exp=int(time.time())+300)
+            for changes in [{},dict(iss='https://evil.example'),dict(aud='wrong-client'),dict(exp=int(time.time())-10)]:
+                token=jwt.encode(dict(good,**changes),key,algorithm='RS256')
+                class Response:
+                    def __enter__(self):return self
+                    def __exit__(self,*args):pass
+                    def read(self,*args):return json.dumps(dict(id_token=token)).encode()
+                with patch('web_google.urlopen',return_value=Response()),patch.object(self.web.google.keys,'get_signing_key_from_jwt',return_value=SimpleNamespace(key=key.public_key())):
+                    if changes:
+                        with self.assertRaises(jwt.InvalidTokenError):self.web.google.exchange('sample-code',attempt)
+                    else:self.assertEqual(self.web.google.exchange('sample-code',attempt)['sub'],good['sub'])
+            with patch('web_google.urlopen',return_value=Response()),patch.object(self.web.google.keys,'get_signing_key_from_jwt',return_value=SimpleNamespace(key=rsa.generate_private_key(public_exponent=65537,key_size=2048).public_key())):
+                with self.assertRaises(jwt.InvalidTokenError):self.web.google.exchange('sample-code',attempt)

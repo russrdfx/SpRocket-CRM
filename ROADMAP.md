@@ -52,7 +52,7 @@ Country selection and local phone formatting for contact, company and profile fi
 
 ## Private web preview
 
-Initial web deployment: Gunicorn, PostgreSQL, Docker Compose/Caddy HTTPS, first administrator bootstrap, account invitations, admin/member permissions, persistent sessions, host-side email and task-rule checks, desktop record migration and PostgreSQL backup/restore tools. Hosting on an organization-owned domain and live Google callbacks require an integration test. Password recovery, account lifecycle administration and web OIDC remain pending. Optional unattended Calendar refresh and encrypted Google credential entry are included in the web preview.
+Initial web deployment: Gunicorn, PostgreSQL, Docker Compose/Caddy HTTPS, first administrator bootstrap, account invitations, admin/member permissions, persistent sessions, host-side email and task-rule checks, desktop record migration and PostgreSQL backup/restore tools. Hosting on an organization-owned domain and live Google callbacks require an integration test. Google OIDC sign-in now supports explicit linking for existing users and invitation-based admission without a new password. Password recovery and account lifecycle administration remain pending. Optional unattended Calendar refresh and encrypted Google credential entry are included in the web preview.
 
 ## Render pilot deployment
 

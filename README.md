@@ -180,3 +180,5 @@ Record-list filters are grouped in a compact dropdown. CSV imports and exports a
 A PostgreSQL-backed private web deployment is available alongside the Mac edition. Host one workspace on your own domain using Docker Compose, with HTTPS, first-run administrator setup, invitations, persistent sessions and background email/task-rule checks. See [web deployment instructions](WEB.md) for setup, Google registration, migration, backups and current preview limits.
 
 A [Render Free pilot template](RENDER.md) is included for short testing with fictional data. It uses manual sync and an expiring free database; self-hosted Docker Compose remains the persistent deployment option.
+
+The private web edition includes **Sign in with Google** for explicitly linked workspace users and invited members. Existing users link Google under Configuration → Security; invite recipients can join with their matching Google account without creating a password. Gmail and Calendar connections remain separate. See [web deployment instructions](WEB.md#google-sign-in).

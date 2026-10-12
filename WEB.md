@@ -32,10 +32,11 @@ Administrators manage workspace configuration, invitations, rules and hosting ba
 
 The organization registers its own Google web OAuth application once. In the same Google Cloud project, enable Gmail API and Google Calendar API. Configure consent and intended users/scopes appropriate to your organization. Follow Google's production and verification requirements; installing SpRocket does not exempt Gmail restricted scopes from those requirements.
 
-In SpRocket, open **Configuration → Integrations** and save the Google client ID and secret. The secret is encrypted in PostgreSQL and is never returned by the API. You can alternatively set `GOOGLE_MAIL_CLIENT_ID` and `GOOGLE_MAIL_CLIENT_SECRET` in `deploy/.env`. Register both exact callbacks:
+In SpRocket, open **Configuration → Integrations** and save the Google client ID and secret. The secret is encrypted in PostgreSQL and is never returned by the API. You can alternatively set `GOOGLE_MAIL_CLIENT_ID` and `GOOGLE_MAIL_CLIENT_SECRET` in `deploy/.env`. Register all three exact callbacks:
 
 - `https://crm.company.com/mail/callback/google`
-- `https://crm.company.com/calendar/callback/google`
+- `https://crm.company.com/calendar/callback/google
+https://crm.company.com/auth/google/callback`
 
 Configuration saved through the app takes effect immediately. If you configure credentials through environment values, recreate the application:
 ```sh
@@ -82,8 +83,18 @@ Run the established desktop tests with `python3 -m unittest discover -q`; Postgr
 SPROCKET_TEST_DATABASE_URL=postgresql://USER@localhost/DISPOSABLE_DB python3 -m unittest test_web_deployment -v
 ```
 
-The first web preview includes password sign-in, one-time bootstrap, invitations, administrator/member boundaries and persistent sessions. Password reset, user deactivation/role changes, web OIDC sign-in remain future work. Google credential entry is available in Configuration; Google Cloud registration remains an administrator task. Test deployment, backups and Google callbacks on your actual HTTPS domain before treating this as a production installation.
+The first web preview includes password sign-in, one-time bootstrap, invitations, administrator/member boundaries and persistent sessions. Password reset and user deactivation/role changes remain future work. Google OIDC sign-in is available for linked users and invited members. Google credential entry is available in Configuration; Google Cloud registration remains an administrator task. Test deployment, backups and Google callbacks on your actual HTTPS domain before treating this as a production installation.
 
 Local verification completed: eight PostgreSQL integration tests covering bootstrap/login/invitations, member boundaries, migration, background owner isolation, opt-in Calendar refresh and encrypted Google configuration. A native PostgreSQL dump/restore into a separate database preserved test accounts and sessions. Browser checks verified administrator setup, sign-in and invitations. The existing 103 desktop backend tests and both presentation suites pass. Docker Compose/Caddy and real-domain HTTPS/Google consent still need hosting verification.
 
 For a temporary free hosted pilot, see [Render deployment](RENDER.md). That template disables background jobs because free web services sleep.
+
+## Google sign-in
+
+Google sign-in is separate from Gmail and Calendar access and requests only `openid email profile`. Configure the existing Google client and register `/auth/google/callback` at your exact HTTPS origin.
+
+Existing users first sign in with their workspace password and open **Configuration → Security → Link Google account**. Choose the Google email matching their workspace account. This explicit linking preserves the user ID, role, record ownership and private mail/calendar caches. Subsequent logins use the Google subject ID rather than email-based automatic linking. The password continues to work.
+
+New invited users can select **Accept invitation with Google** on their invitation page. The verified Google email must match an unexpired invitation; their assigned role is preserved and no password is created. Uninvited Google accounts cannot enter. First administrator bootstrap still requires the setup code and a password; link Google afterward.
+
+Sign-in uses an authorization code with PKCE, a browser-bound state cookie and nonce, RS256 ID-token verification (issuer, audience, expiry and authorized party), encrypted single-use pending attempts in PostgreSQL and existing eight-hour opaque sessions. Google sign-in tokens are discarded after verification. Existing mailbox/calendar connections continue under the same workspace user ID.
