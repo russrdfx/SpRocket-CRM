@@ -1,4 +1,6 @@
-# Private web deployment preview
+# Private web deployment beta
+
+New administrator? Start with [the getting-started guide](GETTING_STARTED.md).
 
 SpRocket's web edition runs one shared workspace per organization on its own HTTPS domain. The existing desktop edition keeps its SQLite storage and local behavior. The web edition uses PostgreSQL and workspace accounts; it does not expose the desktop development server.
 
@@ -35,8 +37,8 @@ The organization registers its own Google web OAuth application once. In the sam
 In SpRocket, open **Configuration → Integrations** and save the Google client ID and secret. The secret is encrypted in PostgreSQL and is never returned by the API. You can alternatively set `GOOGLE_MAIL_CLIENT_ID` and `GOOGLE_MAIL_CLIENT_SECRET` in `deploy/.env`. Register all three exact callbacks:
 
 - `https://crm.company.com/mail/callback/google`
-- `https://crm.company.com/calendar/callback/google
-https://crm.company.com/auth/google/callback`
+- `https://crm.company.com/calendar/callback/google`
+- `https://crm.company.com/auth/google/callback`
 
 Configuration saved through the app takes effect immediately. If you configure credentials through environment values, recreate the application:
 ```sh
@@ -85,7 +87,7 @@ SPROCKET_TEST_DATABASE_URL=postgresql://USER@localhost/DISPOSABLE_DB python3 -m 
 
 The first web preview includes password sign-in, one-time bootstrap, invitations, administrator/member boundaries and persistent sessions. Password reset and user deactivation/role changes remain future work. Google OIDC sign-in is available for linked users and invited members. Google credential entry is available in Configuration; Google Cloud registration remains an administrator task. Test deployment, backups and Google callbacks on your actual HTTPS domain before treating this as a production installation.
 
-Local verification completed: 14 PostgreSQL integration tests covering bootstrap/login/invitations, member boundaries, migration, background owner isolation, opt-in Calendar refresh and encrypted Google configuration. A native PostgreSQL dump/restore into a separate database preserved test accounts and sessions. Browser checks verified administrator setup, sign-in and invitations. The existing 103 desktop backend tests and both presentation suites pass. The Render Docker/HTTPS pilot and real Gmail/Calendar connections have been verified. Docker Compose/Caddy still needs separate hosting verification. Google sign-in admission, token verification, browser binding and replay tests pass; live Google sign-in consent is checked separately during deployment.
+Local verification completed: 14 PostgreSQL integration tests covering bootstrap/login/invitations, member boundaries, migration, background owner isolation, opt-in Calendar refresh and encrypted Google configuration. A native PostgreSQL dump/restore into a separate database preserved test accounts and sessions. Browser checks verified administrator setup, sign-in and invitations. The existing 103 desktop backend tests and both presentation suites pass. The Render Docker/HTTPS pilot and real Gmail/Calendar connections have been verified. Docker Compose/Caddy still needs separate hosting verification. Google sign-in admission, token verification, browser binding and replay tests pass; live Google sign-in consent and explicit account linking have also been verified on the hosted pilot.
 
 For a temporary free hosted pilot, see [Render deployment](RENDER.md). That template disables background jobs because free web services sleep.
 

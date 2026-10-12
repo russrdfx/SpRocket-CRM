@@ -57,3 +57,7 @@ Initial web deployment: Gunicorn, PostgreSQL, Docker Compose/Caddy HTTPS, first 
 ## Render pilot deployment
 
 Free web/database Blueprint, provider credentials encrypted in PostgreSQL, platform port/origin detection and unauthenticated readiness probes. Background jobs are disabled for sleeping free instances. Free database expiry and backup limitations are documented in RENDER.md.
+
+## Public web beta distribution
+
+Web v0.2.0-beta.1 adds a guided company deployment path, a Render trial button with manual update control, durable hosting guidance, tagged source distribution and explicit beta limits. See [GETTING_STARTED.md](GETTING_STARTED.md) and [WEB_RELEASE.md](WEB_RELEASE.md). Google Cloud registration and hosting administration remain company responsibilities.

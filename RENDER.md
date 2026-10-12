@@ -4,6 +4,10 @@ This Blueprint is for a short, fictional-data test. It requests a Free Docker we
 
 Free web services sleep after 15 minutes without inbound traffic, and local files are lost on sleep/restart/redeploy. Free PostgreSQL expires after 30 days; Render later deletes it unless upgraded. This is not an ongoing free production installation. Background jobs are disabled in the pilot; use explicit email/calendar sync. Do not create artificial traffic to bypass the free service's sleep policy. See [Render's free-tier limits](https://render.com/docs/free).
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2Frussrdfx%2FSpRocket-CRM)
+
+For a guided first installation and durable-hosting choices, see [GETTING_STARTED.md](GETTING_STARTED.md). The button requests a temporary Free trial in your own account; review resources before approving. Upstream automatic deployments are disabled.
+
 ## Deploy
 
 1. Create/sign in to your Render account. Use the Free/Hobby workspace option and review any terms yourself. No paid workspace upgrade is needed for this pilot.

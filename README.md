@@ -4,6 +4,23 @@
 
 A free, MIT-licensed, configurable CRM foundation.
 
+## Start your company's private web workspace
+
+**[Web v0.2.0-beta.1 release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/web-v0.2.0-beta.1)** · **[Getting started](GETTING_STARTED.md)** · **[Features and beta limits](WEB_RELEASE.md)**
+
+Each company runs its own installation and database, on its own domain or hosting-provider address. The software is free; hosting may cost money. This is a public beta, with Google sign-in, team invitations and separate Gmail/Calendar connections.
+
+[![Deploy trial to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2Frussrdfx%2FSpRocket-CRM)
+
+**Temporary trial:** Render Free sleeps when idle and its PostgreSQL database expires after 30 days. Review the Free resources before approving deployment. **Lasting installation:** use [Docker Compose on your server](WEB.md#first-installation) or durable managed app/database plans with backups. Upstream pushes do not automatically update your deployment.
+
+Your first deployment opens workspace setup. Create the administrator using its private setup code, configure Google once if wanted, and invite your team. New companies deploy separately; this is not a shared public registration service.
+
+**Web sign-in — Google or your workspace password.**
+
+![SpRocket web beta sign-in screen](docs/screenshots/web-sign-in.png)
+
+
 ## Screenshots
 
 These screenshots show the **v0.1.5 Mac preview**, using only clearly labeled fictional sample records and `.example` email addresses. Navigation also includes sections marked as planned within the app.
