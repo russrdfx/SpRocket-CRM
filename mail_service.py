@@ -34,7 +34,7 @@ class NoRedirect(HTTPRedirectHandler):
         raise MailError('Mail provider redirected unexpectedly. No credentials were forwarded.')
 
 
-def remote(url, data=None, headers=None, method=None):
+def remote(url, data=None, headers=None, method=None, service='Mail'):
     """Fixed provider URLs only; never follow redirects carrying credentials."""
     u = urlparse(url)
     if u.scheme != 'https' or u.hostname not in {'accounts.google.com', 'oauth2.googleapis.com', 'gmail.googleapis.com', 'login.microsoftonline.com', 'graph.microsoft.com', 'www.googleapis.com', 'openidconnect.googleapis.com'} or u.username:
@@ -48,12 +48,12 @@ def remote(url, data=None, headers=None, method=None):
     except HTTPError as error:
         # Never expose token responses, message bodies or provider URLs in errors.
         if error.code in (401, 403):
-            raise MailError('Mail access was denied. Check permissions or reconnect your account.') from None
+            raise MailError('Calendar access was denied. Enable Google Calendar API in your Google Cloud project, check Calendar permissions, or reconnect your account.' if service=='Calendar' else 'Mail access was denied. Check permissions or reconnect your account.') from None
         if error.code == 429:
-            raise MailError('Mail provider is busy. Try again later.') from None
-        raise MailError('Mail provider rejected the request. Check setup or reconnect.') from None
+            raise MailError(service+' provider is busy. Try again later.') from None
+        raise MailError(service+' provider rejected the request. Check setup or reconnect.') from None
     except (URLError, TimeoutError, OSError):
-        raise MailError('Mail provider could not be reached. For a send, check Sent mail before retrying.') from None
+        raise MailError('Calendar provider could not be reached. Try syncing again later.' if service=='Calendar' else 'Mail provider could not be reached. For a send, check Sent mail before retrying.') from None
 
 
 def addresses(value):

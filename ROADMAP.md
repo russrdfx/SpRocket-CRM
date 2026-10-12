@@ -49,3 +49,11 @@ Implemented in development source: discoverable pipeline settings; personal save
 ## Phone formatting delivered
 
 Country selection and local phone formatting for contact, company and profile fields, inline contact editing, a workspace country default, and normalization on record/profile saves and CSV imports. Incomplete or ambiguous input is preserved. Number verification remains outside this feature.
+
+## Private web preview
+
+Initial web deployment: Gunicorn, PostgreSQL, Docker Compose/Caddy HTTPS, first administrator bootstrap, account invitations, admin/member permissions, persistent sessions, host-side email and task-rule checks, desktop record migration and PostgreSQL backup/restore tools. Hosting on an organization-owned domain and live Google callbacks require an integration test. Password recovery, account lifecycle administration and web OIDC remain pending. Optional unattended Calendar refresh and encrypted Google credential entry are included in the web preview.
+
+## Render pilot deployment
+
+Free web/database Blueprint, provider credentials encrypted in PostgreSQL, platform port/origin detection and unauthenticated readiness probes. Background jobs are disabled for sleeping free instances. Free database expiry and backup limitations are documented in RENDER.md.

@@ -174,3 +174,9 @@ Saved views and advanced record filters, reviewed CSV import/export, Google Cale
 Phone fields on contacts, companies and profiles support country selection, automatic international formatting and extensions. Configure a default country in Account Defaults. See [workspace instructions](WORKSPACE.md#phone-numbers).
 
 Record-list filters are grouped in a compact dropdown. CSV imports and exports are managed in Configuration → Import & Export, with a record-type selector and all-record or saved-view export scope.
+
+## Private web preview
+
+A PostgreSQL-backed private web deployment is available alongside the Mac edition. Host one workspace on your own domain using Docker Compose, with HTTPS, first-run administrator setup, invitations, persistent sessions and background email/task-rule checks. See [web deployment instructions](WEB.md) for setup, Google registration, migration, backups and current preview limits.
+
+A [Render Free pilot template](RENDER.md) is included for short testing with fictional data. It uses manual sync and an expiring free database; self-hosted Docker Compose remains the persistent deployment option.

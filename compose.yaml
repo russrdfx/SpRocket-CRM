@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: sprocket
+      POSTGRES_USER: sprocket
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Generate deploy/.env first}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U sprocket -d sprocket"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+  app:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://sprocket:${POSTGRES_PASSWORD}@db:5432/sprocket
+      SPROCKET_ORIGIN: https://${SPROCKET_DOMAIN:?Set your domain}
+      SPROCKET_SETUP_TOKEN: ${SPROCKET_SETUP_TOKEN:?Generate setup code}
+      MAIL_TOKEN_KEY: ${MAIL_TOKEN_KEY:?Generate encryption key}
+      GOOGLE_MAIL_CLIENT_ID: ${GOOGLE_MAIL_CLIENT_ID:-}
+      GOOGLE_MAIL_CLIENT_SECRET: ${GOOGLE_MAIL_CLIENT_SECRET:-}
+    volumes:
+      - app_data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+  proxy:
+    image: caddy:2
+    environment:
+      SPROCKET_DOMAIN: ${SPROCKET_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [app]
+    restart: unless-stopped
+volumes:
+  postgres_data:
+  app_data:
+  caddy_data:
+  caddy_config:

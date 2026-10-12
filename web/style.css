@@ -34,3 +34,6 @@ aside{display:flex;flex-direction:column}.brand{flex-shrink:0}#nav{min-height:0;
 .workspace-filter-menu{position:relative}.workspace-filter-menu summary{cursor:pointer;list-style:none;border:1px solid #cbd8e0;border-radius:5px;padding:11px 14px;background:white;white-space:nowrap}.workspace-filter-menu summary::after{content:' ▾'}.workspace-filter-menu[open] summary{background:#edf5f6}.workspace-filter-menu .workspace-filter-grid{position:absolute;right:0;top:100%;z-index:20;width:min(440px,calc(100vw - 48px));grid-template-columns:1fr 1fr;background:white;padding:18px;margin-top:8px;border:1px solid #cbd8e0;border-radius:10px;box-shadow:0 8px 24px #18304422}.transfer-panel{max-width:850px}.transfer-panel>select{max-width:350px}.transfer-actions{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:24px}.transfer-actions section{min-width:0}.transfer-actions h2{margin-top:0}@media(max-width:650px){.transfer-actions{grid-template-columns:1fr}.workspace-filter-menu .workspace-filter-grid{grid-template-columns:1fr}}
 
 .workspace-filter-menu{margin:0}.workspace-filter-menu label{margin:0}.workspace-filter-menu label select{margin-top:6px;max-width:none}.transfer-actions section{padding:0}
+
+/* Deal boards use the entire available window, including large displays. */
+#content:has(.board){max-width:none;width:100%}

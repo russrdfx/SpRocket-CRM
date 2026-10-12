@@ -19,3 +19,9 @@ Choose **Review CRM logging** on an event. The confirmation lists matching conta
 Disconnect removes the private cache and encrypted calendar token, preserving previously shared meeting history. The account email and logging identifiers remain so reconnecting can retain meeting deduplication. Revoke access separately in your Google account if desired. Calendar writeback, booking links, additional calendars, background sync and Microsoft Calendar are future work.
 
 Implementation follows [Google's Events list API](https://developers.google.com/workspace/calendar/api/v3/reference/events/list) and [Google account identity documentation](https://developers.google.com/identity/openid-connect/openid-connect). Provider responses are mocked in automated tests; live consent and calendar sync remain a user integration test.
+
+## Redirect address mismatch
+
+Google error `400: redirect_uri_mismatch` means the requested callback does not exactly match an Authorized redirect URI in the OAuth web client. In Google Cloud → Google Auth Platform → Clients, select the client used by the CRM's Gmail integration, add `http://127.0.0.1:18765/calendar/callback/google`, and save. Keep the existing mail callback. `localhost`, a different port, or an added trailing slash is a different address. Allow time for the Google configuration change, then start a fresh connection. The Calendar screen's **Google Calendar connection setup** displays the callback for the current configuration. This Google Cloud registration is separate from installing or updating SpRocket.
+
+If the account connects but syncing is denied, confirm that Google Calendar API is enabled in the same project. API enablement is separate from OAuth consent. Calendar sync errors name Calendar and point to API enablement and consent checks.

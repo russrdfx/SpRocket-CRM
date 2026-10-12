@@ -24,7 +24,7 @@ class CalendarService(MailService):
         if 'error' in query or not query.get('code'):raise MailError('Calendar permission was declined.')
         cfg=self.config(provider);tokens=self.token_request(provider,dict(grant_type='authorization_code',code=query['code'][0],redirect_uri=cfg['redirect'],code_verifier=attempt['verifier']))
         if SCOPE not in tokens.get('scope','').split() or not tokens.get('refresh_token') or not tokens.get('access_token'):raise MailError('Calendar read and offline permissions are required.')
-        user=remote('https://openidconnect.googleapis.com/v1/userinfo',headers={'Authorization':'Bearer '+tokens['access_token']})
+        user=remote('https://openidconnect.googleapis.com/v1/userinfo',headers={'Authorization':'Bearer '+tokens['access_token']},service='Calendar')
         email=user.get('email','')
         if user.get('email_verified') is not True or '@' not in email or len(email)>320:raise MailError('Google did not return a verified account email.')
         tokens['expires_at']=time.time()+int(tokens.get('expires_in',3600))
@@ -42,12 +42,12 @@ class CalendarService(MailService):
             with self.connect() as db:db.execute('UPDATE calendar_accounts SET tokens=? WHERE id=?',(self.pack(tokens),account['id']))
         return tokens['access_token']
     def status(self,owner):
-        try:self.config();configured=True
+        try:config=self.config();configured=True
         except MailError:configured=False
         with self.connect() as db:
             accounts=[dict(id=r['id'],email=r['email']) for r in db.execute('SELECT * FROM calendar_accounts WHERE owner=? AND tokens<>\'\'',(owner,))]
             events=[dict(json.loads(r['body']),event_id=r['event_id'],account_id=r['account_id']) for r in db.execute('SELECT e.* FROM calendar_events e JOIN calendar_accounts a ON a.id=e.account_id WHERE a.owner=?',(owner,))]
-        return dict(configured=configured,accounts=accounts,events=sorted(events,key=lambda e:e.get('start','')))
+        return dict(configured=configured,accounts=accounts,events=sorted(events,key=lambda e:e.get('start','')),redirect_uri=config['redirect'] if configured else '')
     def sync(self,owner,data):
         start=datetime.fromisoformat(data.get('start',''));end=datetime.fromisoformat(data.get('end',''))+timedelta(days=1)
         if not 0<(end-start).days<=366:raise MailError('Choose a calendar window up to one year.')
@@ -59,7 +59,7 @@ class CalendarService(MailService):
                 job=self.imports.get(continuation)
                 if not job or job['owner']!=owner or job['account']!=account['id'] or job['params']!=params or job['expires']<time.time():raise MailError('Calendar continuation expired. Start again.')
                 params['pageToken']=job['token']
-            result=remote('https://www.googleapis.com/calendar/v3/calendars/primary/events?'+urlencode(params),headers={'Authorization':'Bearer '+token})
+            result=remote('https://www.googleapis.com/calendar/v3/calendars/primary/events?'+urlencode(params),headers={'Authorization':'Bearer '+token},service='Calendar')
             with self.connect() as db:
                 for event in result.get('items',[]):
                     ident=event.get('id')

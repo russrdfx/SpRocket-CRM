@@ -1,0 +1,13 @@
+.git
+**/__pycache__
+**/*.pyc
+data
+desktop
+work
+.env*
+deploy/.env
+*.db
+*.dump
+**/*.key
+**/*.pem
+docs/screenshots
