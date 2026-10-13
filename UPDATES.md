@@ -21,7 +21,7 @@ If an app rollback is needed, use Render's available rollback controls for your 
 
 ## Docker: approved host-side upgrade
 
-The hosting administrator runs this tool on the existing Docker Compose host. It requires Python 3, Docker Compose, an existing `deploy/.env`, the running app/database, available disk space for a build and backup, and outbound HTTPS to GitHub. The tool does not run inside the CRM and does not give the CRM access to the Docker socket.
+The hosting administrator runs this tool on the existing Docker Compose host. It requires Python 3, Docker Compose, an existing `deploy/.env`, the running app/database, available disk space for a build and backup, and outbound HTTPS to GitHub. The tool does not run inside the CRM and does not give the CRM access to the Docker socket. Release downloads are bounded to 25 MB compressed and 50 MB expanded, unsafe paths/symlinks are rejected, and backup validation reads only the archive header before listing it so large database backups are not loaded into memory.
 
 Use a trusted copy of `deploy/upgrade.py` from this release with `--root` pointing to your existing installation if you have downloaded the release elsewhere. The tool resolves an exact published web release to its Git commit, downloads that source from the repository, validates archive paths and its upgrade contract, and builds a version-specific app image. Future releases with an incompatible database contract require their own reviewed migration procedure; the tool stops rather than guessing.
 
