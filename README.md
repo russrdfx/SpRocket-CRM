@@ -6,7 +6,7 @@ A free, MIT-licensed, configurable CRM foundation.
 
 ## Start your company's private web workspace
 
-**[Web v0.2.0-beta.1 release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/web-v0.2.0-beta.1)** · **[Getting started](GETTING_STARTED.md)** · **[Features and beta limits](WEB_RELEASE.md)**
+**[Web v0.2.0-beta.2 release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/web-v0.2.0-beta.2)** · **[Getting started](GETTING_STARTED.md)** · **[Features and beta limits](WEB_RELEASE.md)**
 
 Each company runs its own installation and database, on its own domain or hosting-provider address. The software is free; hosting may cost money. This is a public beta, with Google sign-in, team invitations and separate Gmail/Calendar connections.
 
@@ -199,3 +199,7 @@ A PostgreSQL-backed private web deployment is available alongside the Mac editio
 A [Render Free pilot template](RENDER.md) is included for short testing with fictional data. It uses manual sync and an expiring free database; self-hosted Docker Compose remains the persistent deployment option.
 
 The private web edition includes **Sign in with Google** for explicitly linked workspace users and invited members. Existing users link Google under Configuration → Security; invite recipients can join with their matching Google account without creating a password. Gmail and Calendar connections remain separate. See [web deployment instructions](WEB.md#google-sign-in).
+
+About SpRocket CRM shows the installed version and edition, with a build identifier when available. See [installed versions and upgrade design](WEB.md#installed-version-and-upgrade-design) for how updates preserve an existing workspace.
+
+**Updates:** Administrators can check edition-specific stable/beta releases under Configuration → Updates. Web v0.2.0-beta.2 includes installed-version/build information and a Docker host upgrade tool with backup and app rollback. Render updates target the existing service. See [update instructions and limits](UPDATES.md).

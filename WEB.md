@@ -100,3 +100,13 @@ Existing users first sign in with their workspace password and open **Configurat
 New invited users can select **Accept invitation with Google** on their invitation page. The verified Google email must match an unexpired invitation; their assigned role is preserved and no password is created. Uninvited Google accounts cannot enter. First administrator bootstrap still requires the setup code and a password; link Google afterward.
 
 Sign-in uses an authorization code with PKCE, a browser-bound state cookie and nonce, RS256 ID-token verification (issuer, audience, expiry and authorized party), encrypted single-use pending attempts in PostgreSQL and existing eight-hour opaque sessions. Google sign-in tokens are discarded after verification. Existing mailbox/calendar connections continue under the same workspace user ID.
+
+## Installed version and upgrade design
+
+About SpRocket CRM displays the installed version, edition and available Render build identifier. The web/source version comes from `app_version.py`; packaged desktop builds supply their actual Electron package version. Bump the central web version before tagging each web release.
+
+Updating an existing installation does not require a new company setup. Render replaces the app inside the same service; Docker Compose replaces its app container while retaining the existing PostgreSQL volume, domain, users, settings and encryption key. A restart/redeployment of app code is still required. Never rerun the first-installation configuration generator or delete persistent volumes to update.
+
+The Updates screen now checks edition-specific stable/beta releases on demand. The host-side Docker upgrade tool resolves an approved release, validates its compatibility contract, builds before downtime, verifies a PostgreSQL backup, updates only the existing app service and checks health/version; compatible app rollback retains the database. Render upgrades use the existing service's controls after an administrator-managed backup. See [UPDATES.md](UPDATES.md) for exact steps and current verification limits.
+
+Automatic installation, host credentials inside the CRM and unattended Mac installation are not included. The web schema baseline is versioned; future migrations must update the compatibility contract and recovery tests before release.

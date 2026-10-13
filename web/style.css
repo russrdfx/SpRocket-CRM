@@ -37,3 +37,4 @@ aside{display:flex;flex-direction:column}.brand{flex-shrink:0}#nav{min-height:0;
 
 /* Deal boards use the entire available window, including large displays. */
 #content:has(.board){max-width:none;width:100%}
+.update-notes{white-space:pre-wrap;overflow-wrap:anywhere;max-height:360px;overflow:auto;font:inherit;background:#f5f7f9;padding:16px;border-radius:8px}

@@ -14,3 +14,5 @@ desktop/build/
 
 *.dump
 backups/
+
+.updates/

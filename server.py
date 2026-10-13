@@ -17,6 +17,8 @@ import workspace_tools
 import phone_numbers
 import enrichment
 import automation
+from app_version import release_info
+from updates import Updates
 from calendar_service import CalendarService
 from recovery import Recovery
 from mail_service import MailService, MailError
@@ -287,12 +289,15 @@ class Handler(BaseHTTPRequestHandler):
             if not self.sso_admin():
                 return self.reply(403, {'error': 'SSO configuration requires an administrator subject configured on the server.'})
             return self.reply(200, {'config': sso_config.effective(), 'enabled': AUTH.enabled, 'secret_configured': bool(os.getenv('OIDC_CLIENT_SECRET')), 'overrides': [k for k,env in sso_config.FIELDS.items() if env in os.environ]})
+        if path == '/api/updates':
+            if not self.sso_admin():return self.reply(403, {'error':'Administrator access required.'})
+            updater=Updates(connect);updater.initialize();return self.reply(200,updater.status())
         if path == '/api/state':
             with connect() as db:
                 records = [dict(json.loads(r['body']), id=r['id'], kind=r['kind'], updated=r['updated']) for r in db.execute('SELECT * FROM records ORDER BY updated DESC')]
                 activities = [dict(json.loads(r['body']), id=r['id'], record_id=r['record_id'], created=r['created']) for r in db.execute('SELECT * FROM activities ORDER BY created DESC')]
-                return self.reply(200, {'settings': load_settings(db), 'records': records, 'activities': activities, 'views': workspace_tools.views(db,self.mail_owner())['views'], 'phone': {'countries':phone_numbers.countries()}})
-        file = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/login': 'login.html', '/login.js': 'login.js', '/mail.js': 'mail.js', '/create.js': 'create.js', '/productivity.js': 'productivity.js', '/workspace.js':'workspace.js', '/features.js':'features.js', '/phone.js':'phone.js'}.get(path)
+                return self.reply(200, {'release': release_info(), 'settings': load_settings(db), 'records': records, 'activities': activities, 'views': workspace_tools.views(db,self.mail_owner())['views'], 'phone': {'countries':phone_numbers.countries()}})
+        file = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/login': 'login.html', '/login.js': 'login.js', '/mail.js': 'mail.js', '/create.js': 'create.js', '/productivity.js': 'productivity.js', '/workspace.js':'workspace.js', '/features.js':'features.js', '/phone.js':'phone.js', '/updates.js':'updates.js'}.get(path)
         if path.startswith('/assets/brand/'):
             candidate = (ROOT / 'web' / path.lstrip('/')).resolve()
             asset_root = (ROOT / 'web/assets/brand').resolve()
@@ -323,6 +328,15 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(401, {'error': 'Sign-in required'})
             if urlparse(self.path).path == '/auth/logout':
                 return self.redirect('/login', [AUTH.logout(self.headers)])
+        if urlparse(self.path).path=='/api/updates/check':
+            if not self.sso_admin():return self.reply(403,{'error':'Administrator access required.'})
+            if origin != (AUTH.origin if AUTH.enabled else 'http://' + self.headers.get('Host', '')):return self.reply(403,{'error':'Invalid origin'})
+            try:
+                length=int(self.headers.get('Content-Length',0))
+                if not 0<length<=1000:raise ValueError('Invalid request.')
+                data=json.loads(self.rfile.read(length));updater=Updates(connect);updater.initialize()
+                return self.reply(200,updater.check(data['channel']))
+            except (ValueError,KeyError,TypeError):return self.reply(400,{'error':'Choose a valid update channel.'})
         try:
             length = int(self.headers.get('Content-Length', 0))
             limit=33000000 if urlparse(self.path).path=='/api/backup/preview' and self.sso_admin() else 1000000

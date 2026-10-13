@@ -25,7 +25,10 @@ import server
 server.connect=lambda:Database(os.environ['DATABASE_URL'])
 server.MAIL.connect=server.connect
 server.CALENDAR.connect=server.connect
+from web_migrations import migrate
+migrate(server.connect)
 server.initialize()
+server.Updates(server.connect).initialize()
 accounts=Accounts(server.connect,origin,os.environ.get('SPROCKET_SETUP_TOKEN',''));accounts.initialize()
 from web_google import GoogleSignIn,GoogleSignInError
 google=GoogleSignIn(accounts);google.initialize()
@@ -117,7 +120,7 @@ class WebHandler(server.Handler):
                 return self.reply(200,accounts.invite(data))
             except (ValueError,KeyError,TypeError,sqlite3.IntegrityError,server.MailError):return self.reply(400,{'error':'Check the entered details, invitation, setup code, or sign-in attempt. Passwords need 12–128 characters.'})
         if not accounts.user(self.headers):return self.reply(401,{'error':'Sign-in required'})
-        if path in ('/api/settings','/api/sso','/api/sso/test','/api/automation/rule') and not self.sso_admin():return self.reply(403,{'error':'Administrator access required.'})
+        if path in ('/api/settings','/api/sso','/api/sso/test','/api/automation/rule','/api/updates/check') and not self.sso_admin():return self.reply(403,{'error':'Administrator access required.'})
         if path.startswith('/api/sso'):return self.reply(400,{'error':'This web preview uses workspace accounts. OIDC web sign-in is a future integration.'})
         if path.startswith('/api/backup/'):
             if not self.sso_admin():return self.reply(403,{'error':'Administrator access required.'})

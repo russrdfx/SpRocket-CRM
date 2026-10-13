@@ -14,7 +14,7 @@ class WebDeployment(unittest.TestCase):
     def tearDownClass(cls):cls.env.stop()
     def setUp(self):
         with self.web.server.connect() as db:
-            db.execute('TRUNCATE web_users,web_invites,web_attempts,web_google_pending,records,user_profiles,mail_accounts,calendar_accounts,calendar_logs,web_provider_config,saved_views CASCADE')
+            db.execute('TRUNCATE web_users,web_invites,web_attempts,web_google_pending,update_status,records,user_profiles,mail_accounts,calendar_accounts,calendar_logs,web_provider_config,saved_views CASCADE')
     def request(self,path,data=None,cookie='',host='127.0.0.1:18766',origin='http://127.0.0.1:18766'):
         raw=json.dumps(data).encode() if data is not None else b''
         env=dict(PATH_INFO=path,REQUEST_METHOD='POST' if data is not None else 'GET',HTTP_HOST=host,HTTP_ORIGIN=origin,HTTP_COOKIE=cookie,CONTENT_TYPE='application/json',CONTENT_LENGTH=str(len(raw)),REMOTE_ADDR='127.0.0.1',**{'wsgi.input':io.BytesIO(raw)})
@@ -206,3 +206,24 @@ class WebDeployment(unittest.TestCase):
                     else:self.assertEqual(self.web.google.exchange('sample-code',attempt)['sub'],good['sub'])
             with patch('web_google.urlopen',return_value=Response()),patch.object(self.web.google.keys,'get_signing_key_from_jwt',return_value=SimpleNamespace(key=rsa.generate_private_key(public_exponent=65537,key_size=2048).public_key())):
                 with self.assertRaises(jwt.InvalidTokenError):self.web.google.exchange('sample-code',attempt)
+    def test_update_routes_admin_boundary_and_edition(self):
+        admin=self.setup_admin()
+        invite=self.request('/api/web/invite',dict(email='member@example.com',role='member'),admin)['body']['url'].split('token=')[1]
+        self.request('/api/web/join',dict(email='member@example.com',name='SAMPLE — Member',password='SamplePassword123!',token=invite))
+        result=self.request('/api/web/login',dict(email='member@example.com',password='SamplePassword123!'))
+        member=next(v.split(';')[0] for k,v in result['headers'] if k=='Set-Cookie')
+        self.assertEqual(self.request('/api/updates',cookie=member)['status'],403)
+        self.assertEqual(self.request('/api/updates/check',dict(channel='beta'),member)['status'],403)
+        self.assertEqual(self.request('/api/updates/check',dict(channel='beta'),admin,origin='https://evil.example')['status'],403)
+        with patch('updates.fetch_releases',return_value=[dict(tag_name='web-v0.2.0-beta.99',prerelease=True),dict(tag_name='v99.0.0')]):
+            result=self.request('/api/updates/check',dict(channel='beta'),admin)
+        self.assertEqual(result['status'],200);self.assertEqual(result['body']['installed']['edition'],'web');self.assertEqual(result['body']['latest']['version'],'0.2.0-beta.99')
+        self.assertEqual(self.request('/api/state',cookie=admin)['body']['release']['version'],'0.2.0-beta.2')
+    def test_web_schema_guard_blocks_newer_database(self):
+        from web_migrations import migrate
+        with self.web.server.connect() as db:db.execute('UPDATE web_schema_version SET version=2 WHERE id=1')
+        try:
+            with self.assertRaises(ValueError):migrate(self.web.server.connect)
+        finally:
+            with self.web.server.connect() as db:db.execute('UPDATE web_schema_version SET version=1 WHERE id=1')
+        migrate(self.web.server.connect)

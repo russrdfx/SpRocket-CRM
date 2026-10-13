@@ -42,7 +42,7 @@ function environment() {
   for (const key of allowed) if (typeof config[key] === 'string') env[key] = config[key];
   const keyPath = path.join(folder, 'mail-token.key');
   if (!fs.existsSync(keyPath)) fs.writeFileSync(keyPath, crypto.randomBytes(32).toString('base64'), {mode: 0o600, flag: 'wx'});
-  return {...env, PORT: '18765', SPROCKET_ORIGIN: origin, OIDC_ORIGIN: origin,
+  return {...env, SPROCKET_RELEASE_VERSION: app.getVersion(), PORT: '18765', SPROCKET_ORIGIN: origin, OIDC_ORIGIN: origin,
     SPROCKET_DB: path.join(folder, 'sprocket.db'), SPROCKET_SSO_CONFIG: path.join(folder, 'sso.json'),
     MAIL_TOKEN_KEY: fs.readFileSync(keyPath, 'utf8').trim(), SPROCKET_DESKTOP_TOKEN: secret};
 }

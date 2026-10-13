@@ -1,10 +1,20 @@
-# SpRocket CRM Web v0.2.0-beta.1
+# SpRocket CRM Web v0.2.0-beta.2
 
-Public beta released October 12, 2026. This is the first tagged private web edition; it does not replace the separately packaged v0.1.8 Mac preview.
+Public beta released October 13, 2026. This updates the private web beta; it does not replace the separately packaged v0.1.8 Mac preview.
 
 ## Install
 
 Start with [GETTING_STARTED.md](GETTING_STARTED.md). Use the Render deployment button for a temporary trial or Docker Compose for a lasting private installation. Each company hosts its own workspace/database on its provider address or domain. Software is MIT-licensed and free; hosting charges and Google application registration are separate.
+
+## New in this release
+
+- About displays installed version, edition and available build identifier.
+- Configuration → Updates checks edition-specific stable/beta releases on demand and displays release notes.
+- Approved Docker host upgrades preserve the existing workspace, validate a database backup and restore the previous app image on startup failure.
+- A web database version guard prevents startup against unsupported newer schemas.
+- Render updates use the existing service after an administrator-managed backup; no automatic hosting credentials are stored.
+
+See [UPDATES.md](UPDATES.md) for upgrade/recovery steps, first-upgrade version identification and verification limits. Full Docker-host upgrade validation and unattended installs remain pending.
 
 ## Available
 
@@ -31,7 +41,7 @@ Start with [GETTING_STARTED.md](GETTING_STARTED.md). Use the Render deployment b
 
 ## Verification
 
-103 desktop/backend regression tests and 14 PostgreSQL web integration tests passed, along with both presentation suites. Web tests cover session persistence, invitations and member permissions, Google token signature/issuer/audience/expiry verification, browser binding, replay prevention, explicit linking, invited admission, private ownership, encrypted configuration, migration and opt-in jobs. A PostgreSQL backup/restore was tested against a separate database. Screenshots use fictional sample records; older Mac screenshots are labelled separately.
+103 desktop/backend regression tests and six updater tests and 16 PostgreSQL web integration tests passed, along with both presentation suites. Web tests cover session persistence, invitations and member permissions, Google token signature/issuer/audience/expiry verification, browser binding, replay prevention, explicit linking, invited admission, private ownership, encrypted configuration, migration and opt-in jobs. A PostgreSQL backup/restore was tested against a separate database. Screenshots use fictional sample records; older Mac screenshots are labelled separately.
 
 ## Updates and feedback
 
