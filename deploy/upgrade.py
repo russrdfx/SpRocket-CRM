@@ -105,7 +105,8 @@ def main():
         try:
             with partial.open('wb') as file:
                 os.chmod(partial,0o600);run(base+['exec','-T','db','pg_dump','-U','sprocket','-d','sprocket','--format=custom'],stdout=file);file.flush();os.fsync(file.fileno())
-            if partial.stat().st_size<5 or partial.read_bytes()[:5]!=b'PGDMP':raise ValueError('Backup archive is incomplete.')
+            with partial.open('rb') as file:
+                if file.read(5)!=b'PGDMP':raise ValueError('Backup archive is incomplete.')
             with partial.open('rb') as file:run(base+['exec','-T','db','pg_restore','--list'],stdin=file,stdout=subprocess.DEVNULL)
             os.replace(partial,backup);record['status']='backed_up';write_json(journal,record)
             run(target+['up','-d','--no-deps','--no-build','app']);verify(target,info['version']);record['status']='verified';write_json(journal,record)
