@@ -22,6 +22,7 @@ from enrichment_service import EnrichmentService, linkedin_url
 import automation
 import followups
 import notifications
+import onboarding
 from app_version import release_info
 from updates import Updates
 from calendar_service import CalendarService
@@ -66,6 +67,7 @@ def initialize():
         automation.initialize(db)
         followups.initialize(db)
         notifications.initialize(db)
+        onboarding.initialize(db)
         if not db.execute('SELECT 1 FROM settings').fetchone():
             kinds = [
                 ('contacts', 'Contacts', [{'key': 'email', 'label': 'Email', 'type': 'email'}, {'key': 'phone', 'label': 'Phone', 'type': 'text'}]),
@@ -117,6 +119,7 @@ def validate_settings(data, previous, records):
         for stage in pipe['stages']:
             if not stage.get('id') or stage['id'] in stage_ids or not stage.get('name') or not 0 <= float(stage.get('probability', 0)) <= 1:
                 raise ValueError('Stages need unique IDs, names and probabilities from 0 to 1.')
+            if stage.get('outcome') not in (None,'open','won','lost'):raise ValueError('Choose Open, Won or Lost for the stage outcome.')
             stage_ids.add(stage['id'])
     # Prevent configuration changes that would strand existing records.
     for row in records:
@@ -295,6 +298,9 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith('/api/'):
                 return self.reply(401, {'error': 'Sign-in required'})
             return self.redirect('/login')
+        if path=='/api/onboarding':
+            if not self.sso_admin():return self.reply(403,{'error':'Administrator access required.'})
+            with connect() as db:return self.reply(200,onboarding.status(db,self.mail_owner(),load_settings(db),os.environ.get('SPROCKET_WEB')=='1' and AUTH.issuer=='sprocket-web'))
         if path=='/api/notifications':
             try:
                 owner=self.mail_owner();profile=MAIL.profile(owner);identity=AUTH.user(self.headers) if AUTH.enabled else {}
@@ -342,7 +348,7 @@ class Handler(BaseHTTPRequestHandler):
                 activities = [dict(json.loads(r['body']), id=r['id'], record_id=r['record_id'], created=r['created']) for r in db.execute('SELECT * FROM activities ORDER BY created DESC')]
                 MAIL.tracking.decorate(db,activities)
                 return self.reply(200, {'release': release_info(), 'settings': load_settings(db), 'records': records, 'activities': activities, 'navigation': navigation_preferences.load(db,self.mail_owner(),load_settings(db)), 'dashboard': dashboard_preferences.load(db,self.mail_owner()), 'views': workspace_tools.views(db,self.mail_owner())['views'], 'phone': {'countries':phone_numbers.countries()}})
-        file = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/login': 'login.html', '/login.js': 'login.js', '/mail.js': 'mail.js', '/create.js': 'create.js', '/productivity.js': 'productivity.js', '/workspace.js':'workspace.js', '/features.js':'features.js', '/phone.js':'phone.js', '/updates.js':'updates.js', '/dashboard.js':'dashboard.js', '/navigation.js':'navigation.js', '/enrichment.js':'enrichment.js', '/tracking.js':'tracking.js', '/followups.js':'followups.js', '/notifications.js':'notifications.js'}.get(path)
+        file = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/login': 'login.html', '/login.js': 'login.js', '/mail.js': 'mail.js', '/create.js': 'create.js', '/productivity.js': 'productivity.js', '/workspace.js':'workspace.js', '/features.js':'features.js', '/phone.js':'phone.js', '/updates.js':'updates.js', '/dashboard.js':'dashboard.js', '/navigation.js':'navigation.js', '/enrichment.js':'enrichment.js', '/tracking.js':'tracking.js', '/followups.js':'followups.js', '/notifications.js':'notifications.js', '/forecast.js':'forecast.js', '/onboarding.js':'onboarding.js'}.get(path)
         if path.startswith('/assets/brand/'):
             candidate = (ROOT / 'web' / path.lstrip('/')).resolve()
             asset_root = (ROOT / 'web/assets/brand').resolve()
@@ -400,6 +406,10 @@ class Handler(BaseHTTPRequestHandler):
                     return self.reply(403,{'error':'Same-origin browser request required.'})
                 with connect() as db:
                     return self.reply(200,dashboard_preferences.save(db,self.mail_owner(),data))
+            if path=='/api/onboarding':
+                if not self.sso_admin():return self.reply(403,{'error':'Administrator access required.'})
+                if self.headers.get('Origin') != (AUTH.origin if AUTH.enabled else 'http://' + self.headers.get('Host','')):return self.reply(403,{'error':'Same-origin browser request required.'})
+                with connect() as db:return self.reply(200,onboarding.save(db,self.mail_owner(),data))
             if path=='/api/notifications':
                 if self.headers.get('Origin') != (AUTH.origin if AUTH.enabled else 'http://' + self.headers.get('Host','')):return self.reply(403,{'error':'Same-origin browser request required.'})
                 with connect() as db:return self.reply(200,notifications.save(db,self.mail_owner(),data))

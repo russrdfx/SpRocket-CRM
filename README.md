@@ -6,7 +6,7 @@ A free, MIT-licensed, configurable CRM foundation.
 
 ## Start your company's private web workspace
 
-**[Web v0.2.0-beta.5 release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/web-v0.2.0-beta.5)** · **[Getting started](GETTING_STARTED.md)** · **[Features and beta limits](WEB_RELEASE.md)**
+**[Web v0.2.0-beta.6 release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/web-v0.2.0-beta.6)** · **[Getting started](GETTING_STARTED.md)** · **[Features and beta limits](WEB_RELEASE.md)**
 
 Each company runs its own installation and database, on its own domain or hosting-provider address. The software is free; hosting may cost money. This is a public beta, with Google sign-in, team invitations and separate Gmail/Calendar connections.
 
@@ -249,3 +249,7 @@ A focused My tasks desk, quick scheduling from contacts/deals/emails, due-time o
 ## Notification center development update
 
 The development source adds personal alerts for tracked email opens, new incoming synced mail and due task reminders, with persistent unread state, category preferences and optional desktop alerts while the app is open. See [Notifications](NOTIFICATIONS.md). Included in web v0.2.0-beta.5.
+
+## Web v0.2.0-beta.6 update
+
+Company list entries now open a dedicated details page. Owner dropdowns consolidate the signed-in person's name and connected email aliases while preserving existing assignments. Deal forms keep configuration shortcuts in Settings. Live [deal forecasts](FORECASTING.md), explicit pipeline stage outcomes, and a guided [company setup checklist](ONBOARDING.md) are included in web v0.2.0-beta.6.

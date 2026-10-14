@@ -1,6 +1,6 @@
-# SpRocket CRM Web v0.2.0-beta.5
+# SpRocket CRM Web v0.2.0-beta.6
 
-Released October 13, 2026. This is the private web release; the separately packaged Mac preview remains v0.1.8.
+Released October 14, 2026. This is the private web release; the separately packaged Mac preview remains v0.1.8.
 
 ## Install or upgrade
 
@@ -36,8 +36,14 @@ Apollo live lookups await an API-enabled account. ZoomInfo currently supports re
 
 ## Verification
 
-168 Python regression/integration checks, including disposable PostgreSQL coverage, and seven JavaScript suites pass. Browser checks use fictional SAMPLE data and cover navigation, enrichment review/save/undo, tracking expansion, follow-up scheduling/rescheduling/completion and template preview/application. Tests send no real mail. Production updates use a fresh backup whose isolated restore and encrypted Google configuration are verified before deploying.
+153 unique Python regression checks, 23 disposable PostgreSQL checks and 12 JavaScript suites pass. Browser checks use fictional SAMPLE data and cover navigation, enrichment review/save/undo, tracking expansion, follow-up scheduling/rescheduling/completion and template preview/application. Tests send no real mail. Production updates use a fresh backup whose isolated restore and encrypted Google configuration are verified before deploying.
 
 ## New in beta.5
 
 A personal notification center covers tracked email opens, incoming synced email and due task reminders, with saved unread state/preferences and optional desktop alerts. Contact and deal cards have grouped, responsive actions. Release-check failures preserve the last successful result and allow immediate retry. GitHub documentation screenshots now show the web edition. See [Notifications](NOTIFICATIONS.md) and [Updates](UPDATES.md).
+
+## New in beta.6
+
+Company names open dedicated details pages with related records and activity. Deal forms no longer navigate away to configuration, and owner lists consolidate the signed-in user’s name and email aliases while preserving existing assignments. Live deal forecasts filter by period, owner and pipeline; stages support explicit Open/Won/Lost outcomes. Administrators have a guided setup checklist with saved personal progress and optional integrations. See [Forecasting](FORECASTING.md) and [Getting started checklist](ONBOARDING.md).
+
+The setup progress table is additive. This update preserves existing configuration, records, connections and encryption keys. It does not enable background jobs, providers or automatic email sending.

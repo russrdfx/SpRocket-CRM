@@ -1,0 +1,14 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const state={settings:{owners:['Russ Altman','russ@example.test','Another User']},auth:{profile:{name:'Russel Altman'},user:{name:'Russ Altman',email:'russ@example.test'}},mail:{accounts:[{email:'russ@example.test'},{email:'alias@example.test'}]}};
+const c=vm.createContext({state});vm.runInContext(fs.readFileSync('web/app.js','utf8').split('let state, page=')[0],c);
+assert.deepEqual(Array.from(c.ownerNames()),['Russel Altman','Another User']);
+assert.deepEqual(Array.from(c.ownerNames('russ@example.test')),['russ@example.test','Another User'],'Existing email assignment stays selected without duplicate owner');
+assert.equal(c.ownerLabel('russ@example.test'),'Russel Altman');assert.equal(c.ownerLabel('alias@example.test'),'Russel Altman');
+assert.deepEqual(Array.from(c.ownerNames('external@example.test')),['Russel Altman','Another User','external@example.test'],'Unrelated existing owner is retained');
+assert.equal(c.ownerLabel(''),'');
+state.records=[{id:'by-name',kind:'deals',owner:'Russel Altman'},{id:'by-email',kind:'deals',owner:'russ@example.test'},{id:'other',kind:'deals',owner:'Another User'}];
+vm.runInContext(fs.readFileSync('web/workspace.js','utf8').split('function recordWorkspaceView')[0],c);
+assert.deepEqual(Array.from(c.matchingRecords('deals',{owner:'Russel Altman'}),r=>r.id),['by-name','by-email'],'Owner filter matches legacy email and current name');
+state.auth={};state.mail={accounts:[{email:'first@example.test'},{email:'second@example.test'}]};state.settings.owners=[];
+assert.deepEqual(Array.from(c.ownerNames()),['first@example.test','second@example.test'],'Unknown identities must not be merged');
+console.log('Owner alias deduplication, legacy selection and unrelated identity preservation passed');

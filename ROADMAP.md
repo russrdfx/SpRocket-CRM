@@ -82,8 +82,12 @@ Implemented locally: hosted opt-in tracking, administrator switch, per-inbox def
 
 ## Follow-up workflow development update
 
-Implemented locally: personal task desk with due-time overdue labels and owner scopes; contact/deal/email scheduling; task rescheduling and guarded completion; reusable personal/workspace templates, supported placeholders and composer preview/application. Released in web v0.2.0-beta.4. Deal forecasting and guided company onboarding remain subsequent priorities.
+Implemented locally: personal task desk with due-time overdue labels and owner scopes; contact/deal/email scheduling; task rescheduling and guarded completion; reusable personal/workspace templates, supported placeholders and composer preview/application. Released in web v0.2.0-beta.4. Deal forecasting and guided company onboarding are included in web v0.2.0-beta.6; see FORECASTING.md and ONBOARDING.md.
 
 ## Notifications development update
 
 Implemented locally: a persistent personal notification center for email opens, new synced incoming mail and due tasks; unread badges; direct context links; per-category preferences; and opt-in desktop alerts. Closed-app push, assignment alerts and calendar reminders remain future work. See [NOTIFICATIONS.md](NOTIFICATIONS.md).
+
+## Record usability and sales development update
+
+Implemented locally: dedicated company details with related activity and separate editing; owner name/email alias consolidation with legacy assignment preservation; deal forms without configuration-navigation shortcuts; live period/owner/pipeline forecasting; explicit stage outcomes; and an administrator setup guide with personal progress and optional integrations. Released in web v0.2.0-beta.6. Historical forecast snapshots, quotas and advanced sales reporting remain future work.

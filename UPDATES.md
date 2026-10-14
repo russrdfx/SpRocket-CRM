@@ -28,7 +28,7 @@ Use a trusted copy of `deploy/upgrade.py` from this release with `--root` pointi
 Preview first:
 
 ```sh
-python3 deploy/upgrade.py --root /srv/sprocket --version web-v0.2.0-beta.5
+python3 deploy/upgrade.py --root /srv/sprocket --version web-v0.2.0-beta.6
 ```
 
 For the first upgrade from the original web beta, which had no version metadata, also supply `--from-version 0.2.0-beta.1` after confirming that this is what you installed. Never use that option to bypass a known incompatible version.
@@ -36,7 +36,7 @@ For the first upgrade from the original web beta, which had no version metadata,
 Approve after reviewing the target:
 
 ```sh
-python3 deploy/upgrade.py --root /srv/sprocket --version web-v0.2.0-beta.5 --approve
+python3 deploy/upgrade.py --root /srv/sprocket --version web-v0.2.0-beta.6 --approve
 ```
 
 The tool:
@@ -83,3 +83,9 @@ Adds personal email-open, incoming-mail and task-reminder notifications, persist
 Failed release checks can be retried immediately and preserve the last successful result for the selected channel. GitHub rate limits and network failures have clearer guidance and a direct release-page link. No update is installed automatically.
 
 The database additions are additive. Existing records, pipelines, custom fields, profiles, connected accounts and encryption keys are retained. Back up before deploying the beta.5 commit to the existing service; do not create a new workspace or database. See [Notifications](NOTIFICATIONS.md).
+
+## Web v0.2.0-beta.6
+
+Adds dedicated company details, cleaner deal forms, consolidated owner labels, live deal forecasting, explicit pipeline stage outcomes and an administrator setup checklist. See [FORECASTING.md](FORECASTING.md) and [ONBOARDING.md](ONBOARDING.md).
+
+Back up and verify restoration before deploying this commit to the existing service. Keep the same database and encryption key. The new setup progress table is additive; existing records, pipelines, properties, profiles and Google connections are retained. Older stages use their existing Won/Lost names until an administrator explicitly sets their outcome. Background jobs and provider integrations are not enabled automatically.

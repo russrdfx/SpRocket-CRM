@@ -13,7 +13,7 @@ function dashModel(data,prefs,calendar,now=new Date()){
  const tasks=data.records.filter(r=>r.kind==='tasks'&&!r.completed&&(prefs.task_scope==='all'||!r.owner||aliases.includes(r.owner.toLowerCase()))).sort((a,b)=>(a.due_date||'9999').localeCompare(b.due_date||'9999')||(a.due_time||'').localeCompare(b.due_time||''));
  const stageFor=r=>data.settings.pipelines.find(p=>p.id===r.pipeline)?.stages.find(s=>s.id===r.stage);
  // Terminal names are explicit; a 0% lead or a 100% open stage is still open.
- const outcome=r=>/^closed[\s_-]*won$|^won$/i.test(stageFor(r)?.name||'')?'won':/^closed[\s_-]*lost$|^lost$/i.test(stageFor(r)?.name||'')?'lost':'open';
+ const outcome=r=>stageOutcome(stageFor(r));
  const deals=data.records.filter(r=>r.kind==='deals'),open=deals.filter(r=>outcome(r)==='open');
  const activities=[...data.activities].sort((a,b)=>dashActivityTime(b)-dashActivityTime(a));
  const touches=new Map();for(const a of activities)if(!touches.has(a.record_id))touches.set(a.record_id,dashActivityTime(a));

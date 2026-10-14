@@ -100,3 +100,12 @@ aside{display:flex;flex-direction:column}.brand{flex-shrink:0}#nav{min-height:0;
 @media(max-width:900px){#notification-toggle>span:not(.notification-badge){display:none}.notification-panel{right:12px}}
 
 .notification-panel{padding:0}
+
+.company-detail #company-edit{grid-column:1/-1}
+.company-detail #company-timeline{margin-top:16px}
+.forecast-filters{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin:24px 0}.forecast-filters label{flex:1 1 145px;margin:0}.forecast-filters button{margin-bottom:0}.forecast-filters .error{flex-basis:100%;margin:0}.forecast-metrics{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}.forecast-breakdowns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.table-scroll{max-width:100%;overflow:auto}.table-scroll table{min-width:540px}.forecast-metrics small{display:block;color:#60758c;margin-top:8px}#stages .row{grid-template-columns:minmax(120px,1fr) 85px minmax(85px,110px) 36px}#stages .row select{min-width:0}@media(max-width:1000px){.forecast-breakdowns{grid-template-columns:1fr}}@media(max-width:600px){#stages .row{grid-template-columns:minmax(100px,1fr) 70px 36px}#stages .row select{grid-row:2;grid-column:1/3}#stages .row button{grid-column:3;grid-row:1}}
+.setup-banner{display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:16px 20px;margin-bottom:24px;border:1px solid #bdd2ee;border-radius:12px;background:#edf5ff}.setup-banner[hidden]{display:none}.setup-banner>div{flex:1}.setup-banner span{display:block;margin-top:5px;color:#60758c;font-size:12px}.setup-summary progress{width:100%;height:12px;accent-color:#1267ca}.setup-step{display:flex;gap:16px;margin-bottom:16px}.setup-step-status{font-size:24px;color:#64778d;flex:none}.setup-step-status.done{color:#127b62}.setup-step h2{margin:0}.setup-step h2 .pill{font-size:11px;font-weight:normal;margin-left:6px}.setup-step-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px}.setup-step-actions label{display:flex;align-items:center;gap:8px;margin:0;font-weight:normal}.setup-step-actions input{width:auto;margin:0}.setup-step>div:last-child{min-width:0;flex:1}.setup-banner button[data-setup-hide]{border:0;background:transparent;font-size:20px}
+#stages .row{display:grid;gap:8px;margin:8px 0}#stages .row input,#stages .row select{min-width:0;margin:0}#stages .row button{padding:8px}
+
+.forecast-breakdowns>.panel{min-width:0}
+.forecast-breakdowns table{min-width:0;width:100%}.forecast-breakdowns th,.forecast-breakdowns td{padding:12px 8px;font-size:12px}

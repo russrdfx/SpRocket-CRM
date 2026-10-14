@@ -14,7 +14,7 @@ class WebDeployment(unittest.TestCase):
     def tearDownClass(cls):cls.env.stop()
     def setUp(self):
         with self.web.server.connect() as db:
-            db.execute('TRUNCATE notifications,notification_preferences,followup_requests,email_templates,mail_tracking_config,mail_tracking_defaults,mail_tracking_events,mail_tracking,enrichment_config,provider_enrichment_jobs,enrichment_receipts,enrichment_usage,navigation_preferences,dashboard_preferences,web_users,web_invites,web_attempts,web_google_pending,update_status,records,user_profiles,mail_accounts,calendar_accounts,calendar_logs,web_provider_config,saved_views CASCADE')
+            db.execute('TRUNCATE onboarding_progress,notifications,notification_preferences,followup_requests,email_templates,mail_tracking_config,mail_tracking_defaults,mail_tracking_events,mail_tracking,enrichment_config,provider_enrichment_jobs,enrichment_receipts,enrichment_usage,navigation_preferences,dashboard_preferences,web_users,web_invites,web_attempts,web_google_pending,update_status,records,user_profiles,mail_accounts,calendar_accounts,calendar_logs,web_provider_config,saved_views CASCADE')
     def request(self,path,data=None,cookie='',host='127.0.0.1:18766',origin='http://127.0.0.1:18766'):
         raw=json.dumps(data).encode() if data is not None else b''
         env=dict(PATH_INFO=path,REQUEST_METHOD='POST' if data is not None else 'GET',HTTP_HOST=host,HTTP_ORIGIN=origin,HTTP_COOKIE=cookie,CONTENT_TYPE='application/json',CONTENT_LENGTH=str(len(raw)),REMOTE_ADDR='127.0.0.1',**{'wsgi.input':io.BytesIO(raw)})
@@ -331,3 +331,19 @@ class WebDeployment(unittest.TestCase):
         with self.web.server.connect() as db:self.assertEqual(db.execute("SELECT read_at FROM notifications WHERE id='other-event'").fetchone()[0],'')
         self.assertEqual(self.request('/api/notifications',{'action':'preferences','preferences':notifications.DEFAULTS},admin,origin='https://evil.example')['status'],403)
         self.assertEqual(self.request('/api/notifications?offset=9999',cookie=admin)['status'],400)
+
+    def test_setup_guide_admin_scope_and_postgresql_progress(self):
+        admin=self.setup_admin()
+        self.assertEqual(self.request('/api/onboarding')['status'],401)
+        first=self.request('/api/onboarding',cookie=admin)
+        self.assertEqual(first['status'],200);self.assertEqual(first['body']['required_done'],0)
+        self.assertEqual(self.request('/api/onboarding',dict(action='reviewed',step='workspace',enabled=True),admin)['status'],200)
+        self.assertEqual(self.request('/api/onboarding',cookie=admin)['body']['required_done'],1)
+        self.assertEqual(self.request('/api/onboarding',dict(action='hidden',enabled=True),admin,origin='https://evil.example')['status'],403)
+        invite=self.request('/api/web/invite',dict(email='setup-member@example.com',role='member'),admin)['body']['url'].split('token=')[1]
+        self.request('/api/web/join',dict(email='setup-member@example.com',name='SAMPLE member',password='SamplePassword123!',token=invite))
+        login=self.request('/api/web/login',dict(email='setup-member@example.com',password='SamplePassword123!'))
+        member=next(v.split(';')[0] for k,v in login['headers'] if k=='Set-Cookie')
+        self.assertEqual(self.request('/api/onboarding',cookie=member)['status'],403)
+        self.assertEqual(self.request('/api/onboarding',dict(action='hidden',enabled=True),member)['status'],403)
+        self.assertTrue(next(s for s in self.request('/api/onboarding',cookie=admin)['body']['steps'] if s['id']=='team')['done'])

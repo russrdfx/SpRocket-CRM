@@ -12,7 +12,7 @@ Use **Complete** for completion and existing repeat behavior. **Reschedule** cha
 
 ## Schedule the next action
 
-From a contact or deal, choose **Schedule follow-up**. From an email, choose **Create follow-up task**. You can also create an independent follow-up in Tasks.
+From a contact, company or deal, choose **Schedule follow-up**. From an email, choose **Create follow-up task**. You can also create an independent follow-up in Tasks.
 
 Choose title, type (To-do/Call/Email), owner, date, time, priority, reminder and notes. Today/Tomorrow/Next week buttons select a date. The signed-in user's profile is the default owner. Contact/deal actions link the source and its existing contact/company/deal associations; email actions link matching contacts and their deals. Email content remains in the existing email activity rather than being copied into task notes. Scheduling logs a short task activity on linked records.
 

@@ -28,8 +28,8 @@ const navIconPaths={
  sparkle:'<path d="m12 3 2 7 7 2-7 2-2 7-2-7-7-2 7-2z"/>',phone:'<path d="m5 3 4 5-2 3a13 13 0 0 0 6 6l3-2 5 4-2 3C9 23 1 15 2 5z"/>'
 };
 const navGroupIcons={CRM:'contacts',Work:'tasks',Marketing:'megaphone',Content:'file',Sales:'chart',Revenue:'wallet',Service:'support','Data Management':'data',Agents:'bot',Automation:'bolt',Reporting:'chart',Development:'code','Custom records':'layers'};
-const navItemIcons={Contacts:'contacts',Companies:'company',Deals:'deals',Tickets:'ticket',Tasks:'tasks',Inbox:'mail',Calendar:'calendar',Dashboards:'home',Reports:'chart',Configuration:'settings','Data Quality':'clean','Data Model':'layers','Data Enrichment':'sparkle',Calls:'phone',Meetings:'calendar','Marketing Emails':'mail',Invoices:'wallet',Workflows:'bolt','Prospecting Agent':'bot'};
-const navBuiltPages={'Message Templates':'templates',Contacts:'contacts',Companies:'companies',Deals:'deals',Tickets:'tickets',Tasks:'tasks',Inbox:'inbox',Calendar:'calendar',Dashboards:'dashboard',Reports:'reports',Configuration:'settings','Data Quality':'cleanup','Activity Feed':'dashboard'};
+const navItemIcons={Contacts:'contacts',Companies:'company',Deals:'deals',Tickets:'ticket',Tasks:'tasks',Inbox:'mail',Calendar:'calendar',Dashboards:'home',Reports:'chart',Forecast:'chart',Configuration:'settings','Data Quality':'clean','Data Model':'layers','Data Enrichment':'sparkle',Calls:'phone',Meetings:'calendar','Marketing Emails':'mail',Invoices:'wallet',Workflows:'bolt','Prospecting Agent':'bot'};
+const navBuiltPages={'Message Templates':'templates',Contacts:'contacts',Companies:'companies',Deals:'deals',Tickets:'tickets',Tasks:'tasks',Inbox:'inbox',Calendar:'calendar',Dashboards:'dashboard',Reports:'reports',Forecast:'forecast',Configuration:'settings','Data Quality':'cleanup','Activity Feed':'dashboard'};
 const navSettings={'Data Model':'Properties','Data Enrichment':'Data Enrichment'};
 let navMoreOpen=false,navMoreGroup='CRM',navMoreQuery='',navSaving=false,navLastPage='',navLastOwner='';
 function navIcon(key){return `<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${navIconPaths[key]||navIconPaths.file}</svg>`}
@@ -41,7 +41,7 @@ function navRoute(item){return item.startsWith('record:')?item.slice(7):navBuilt
 function navCurrent(item){
  if(item==='Configuration')return page==='settings'&&!state.navigation.preferences.pins.some(p=>navSettings[p]===settingsSection);
  if(item in navSettings)return page==='settings'&&settingsSection===navSettings[item];
- const route=navRoute(item);return page===route||(item==='Contacts'&&page.startsWith('contact:'))||(item==='Deals'&&page.startsWith('deal:'));
+ const route=navRoute(item);return page===route||(item==='Contacts'&&page.startsWith('contact:'))||(item==='Deals'&&page.startsWith('deal:'))||(item==='Companies'&&page.startsWith('company:'));
 }
 function navNavigate(item){navCloseMore();if(item in navSettings){settingsSection=navSettings[item];go('settings')}else if(item.startsWith('record:'))go(item.slice(7));else destination(item)}
 function navButton(item,label=navLabel(item)){const icon=navItemIcons[item]||navGroupIcons[navGroup(item)]||'file';return `<button type="button" class="nav-link ${navCurrent(item)?'active':''}" data-nav-item="${esc(item)}" ${navCurrent(item)?'aria-current="page"':''} title="${esc(label)}">${navIcon(icon)}<span>${esc(label)}</span>${navPlanned(item)?'<small class="nav-planned">Planned</small>':''}</button>`}

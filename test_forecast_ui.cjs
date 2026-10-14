@@ -1,0 +1,18 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const c=vm.createContext({reportsView(){},ownerLabel:v=>v==='me@example.test'?'Sample User':v||''});
+vm.runInContext(fs.readFileSync('web/app.js','utf8').split('function ownerLabel')[0],c);vm.runInContext(fs.readFileSync('web/forecast.js','utf8'),c);
+const settings={pipelines:[{id:'sales',kind:'deals',stages:[{id:'lead',name:'Lead',probability:0},{id:'open100',name:'Negotiation',probability:1},{id:'proposal',name:'Proposal',probability:.5},{id:'won',name:'Custom success',probability:.2,outcome:'won'},{id:'lost',name:'Not proceeding',probability:.9,outcome:'lost'}]}]};
+const deal=(id,stage,amount,close_date,owner='Sample User')=>({id,name:id,kind:'deals',pipeline:'sales',stage,amount,close_date,owner});
+const data={settings,records:[deal('open','proposal',1000,'2026-10-20'),deal('won','won',200,'2026-10-10'),deal('lost','lost',900,'2026-10-12'),deal('old','proposal',100,'2026-09-30'),deal('undated','lead',50,''),deal('guarantee','open100',100,'2026-10-31','me@example.test'),deal('zero','lead',0,'2026-10-31'),{...deal('invalid','',20,'2026-02-30'),pipeline:''},{id:'not-deal',kind:'contacts',amount:99999}]};
+const f=c.forecastData(data,{start:'2026-10-01',end:'2026-10-31'},new Date('2026-10-14T12:00:00'));
+assert.equal(f.openValue,1100);assert.equal(f.weighted,600);assert.equal(f.wonValue,200);assert.equal(f.lostValue,900);assert.equal(f.projection,800);assert.equal(f.period.length,5);assert.equal(f.months.length,1);
+assert.deepEqual(Array.from(f.attention,r=>r.record.id),['old','undated','invalid']);assert.equal(c.forecastData(data,{start:'2026-10-01',end:'2026-10-31',owner:'Sample User'}).rows.length,8);
+assert.equal(c.forecastData(data,{start:'2026-10-01',end:'2026-10-31',pipeline:'missing'}).rows.length,0);
+assert.equal(c.stageOutcome({name:'Closed Won'}),'won');assert.equal(c.stageOutcome({name:'Closed Won',outcome:'open'}),'open');assert.equal(c.stageOutcome({name:'Negotiation',probability:1}),'open');
+assert.throws(()=>c.forecastData(data,{start:'2026-12-31',end:'2026-10-01'}));assert.equal(c.forecastDate('2026-02-30'),false);assert.equal(c.forecastDate('2028-02-29'),true);
+assert.deepEqual(Array.from(c.forecastRange('next-quarter',new Date('2026-12-15T12:00:00'))),['2027-01-01','2027-03-31']);
+assert.equal(c.forecastData({settings,records:[]},{start:'2026-10-01',end:'2026-10-31'}).projection,0);
+console.log('Forecast period boundaries, outcomes, weights, alias filters, missing data and year rollover passed');
+const incomplete={settings,records:[...data.records,deal('missing-amount','proposal','','2026-10-22'),deal('won-undated','won',200,'')]};
+const quality=c.forecastData(incomplete,{start:'2026-10-01',end:'2026-10-31'},new Date('2026-10-14T12:00:00'));
+assert.equal(quality.weighted,600);assert.equal(quality.wonValue,200);assert.equal(quality.attention.some(r=>r.record.id==='missing-amount'&&!r.validAmount),true);assert.equal(quality.attention.some(r=>r.record.id==='won-undated'),true);

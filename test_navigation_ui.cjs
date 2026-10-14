@@ -15,3 +15,4 @@ assert.equal(context.navInsideTools({composedPath:()=>[{}, {id:'more-menu'}, {}]
 assert.equal(context.navInsideTools({composedPath:()=>[{}, {id:'more'}, {}]}),true);
 assert.equal(context.navInsideTools({composedPath:()=>[{}, {id:'content'}, {}]}),false);
 console.log('Navigation routing, nested active records, grouping, planned status and label escaping passed');
+context.page='company:co';assert.equal(context.navCurrent('Companies'),true);assert.equal(context.navCurrent('Contacts'),false);

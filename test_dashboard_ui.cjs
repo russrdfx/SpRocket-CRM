@@ -1,5 +1,6 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert');
 const ctx=vm.createContext({Date,Number,JSON,Boolean,Map,Set,shell:()=>{},state:null,esc:String});
+vm.runInContext(fs.readFileSync(__dirname+'/web/app.js','utf8').split('function ownerLabel')[0],ctx);
 vm.runInContext(fs.readFileSync(__dirname+'/web/dashboard.js','utf8'),ctx);
 const prefs=JSON.parse(vm.runInContext('JSON.stringify(dashDefaults)',ctx));
 const data={auth:{profile:{name:'Sample User'}},mail:{accounts:[{email:'sample@example.test'}]},settings:{pipelines:[{id:'p',stages:[{id:'zero',name:'Lead',probability:0},{id:'one',name:'Negotiation',probability:1},{id:'won',name:'Closed Won',probability:1},{id:'lost',name:'Closed Lost',probability:0}]}]},records:[
