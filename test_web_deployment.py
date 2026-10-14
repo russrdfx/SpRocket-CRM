@@ -235,7 +235,7 @@ class WebDeployment(unittest.TestCase):
         with patch('updates.fetch_releases',return_value=[dict(tag_name='web-v0.2.0-beta.99',prerelease=True),dict(tag_name='v99.0.0')]):
             result=self.request('/api/updates/check',dict(channel='beta'),admin)
         self.assertEqual(result['status'],200);self.assertEqual(result['body']['installed']['edition'],'web');self.assertEqual(result['body']['latest']['version'],'0.2.0-beta.99')
-        self.assertEqual(self.request('/api/state',cookie=admin)['body']['release']['version'],'0.2.0-beta.2')
+        self.assertEqual(self.request('/api/state',cookie=admin)['body']['release']['version'],'0.2.0-beta.3')
     def test_web_schema_guard_blocks_newer_database(self):
         from web_migrations import migrate
         with self.web.server.connect() as db:db.execute('UPDATE web_schema_version SET version=2 WHERE id=1')

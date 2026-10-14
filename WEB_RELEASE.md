@@ -1,4 +1,4 @@
-# SpRocket CRM Web v0.2.0-beta.2
+# SpRocket CRM Web v0.2.0-beta.3
 
 Public beta released October 13, 2026. This updates the private web beta; it does not replace the separately packaged v0.1.8 Mac preview.
 
@@ -8,13 +8,14 @@ Start with [GETTING_STARTED.md](GETTING_STARTED.md). Use the Render deployment b
 
 ## New in this release
 
-- About displays installed version, edition and available build identifier.
-- Configuration → Updates checks edition-specific stable/beta releases on demand and displays release notes.
-- Approved Docker host upgrades preserve the existing workspace, validate a database backup and restore the previous app image on startup failure.
-- A web database version guard prevents startup against unsupported newer schemas.
-- Render updates use the existing service after an administrator-managed backup; no automatic hosting credentials are stored.
+- Three focused Home tabs: Daily desk for tasks and a private calendar agenda, Sales overview for pipeline health, and Relationship hub for contacts and conversations.
+- Per-user customization: card visibility/order, a default tab, spacing, side-panel visibility, task scope and date/inactivity windows.
+- Direct task completion and compact, deduplicated contact conversations.
+- Profile-menu feature requests, bug reports and general feedback prepare a user-reviewed email to russ@rdfx.ca with version context.
+- New installations start with an editable Sales Pipeline: Lead 10%, Demo Booked 20%, Demo Completed 40%, Proposal Sent 65%, Closed Won 100%, Closed Lost 0%. Existing pipelines are unchanged by upgrade.
+- Updated sample-data screenshots and documentation; existing logo preserved.
 
-See [UPDATES.md](UPDATES.md) for upgrade/recovery steps, first-upgrade version identification and verification limits. Full Docker-host upgrade validation and unattended installs remain pending.
+See [DASHBOARD.md](DASHBOARD.md) for Home, preference privacy and feedback behavior, and [UPDATES.md](UPDATES.md) for upgrade/recovery steps. The preferences table is additive; original workspace data and Google connections remain in place. Older browser-restorable SQLite backups must match the current schema. Full Docker-host upgrade validation and unattended installs remain pending.
 
 ## Available
 

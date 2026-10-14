@@ -1,6 +1,6 @@
 """Public build metadata. Bump SOURCE_VERSION before tagging a web release."""
 import os,re
-SOURCE_VERSION='0.2.0-beta.2'
+SOURCE_VERSION='0.2.0-beta.3'
 
 def release_info():
     desktop=bool(os.environ.get('SPROCKET_DESKTOP_TOKEN'))

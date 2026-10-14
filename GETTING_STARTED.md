@@ -1,6 +1,6 @@
 # Start your company's SpRocket workspace
 
-SpRocket CRM Web **v0.2.0-beta.2** is a free, open-source public beta. Each company runs its own installation and database. Hosting may cost money. There is no shared public signup service, and you do not need a SpRocket domain.
+SpRocket CRM Web **v0.2.0-beta.3** is a free, open-source public beta. Each company runs its own installation and database. Hosting may cost money. There is no shared public signup service, and you do not need a SpRocket domain.
 
 ## Choose your hosting
 

@@ -28,7 +28,7 @@ Use a trusted copy of `deploy/upgrade.py` from this release with `--root` pointi
 Preview first:
 
 ```sh
-python3 deploy/upgrade.py --root /srv/sprocket --version web-v0.2.0-beta.2
+python3 deploy/upgrade.py --root /srv/sprocket --version web-v0.2.0-beta.3
 ```
 
 For the first upgrade from the original web beta, which had no version metadata, also supply `--from-version 0.2.0-beta.1` after confirming that this is what you installed. Never use that option to bypass a known incompatible version.
@@ -36,7 +36,7 @@ For the first upgrade from the original web beta, which had no version metadata,
 Approve after reviewing the target:
 
 ```sh
-python3 deploy/upgrade.py --root /srv/sprocket --version web-v0.2.0-beta.2 --approve
+python3 deploy/upgrade.py --root /srv/sprocket --version web-v0.2.0-beta.3 --approve
 ```
 
 The tool:
@@ -69,3 +69,5 @@ Once packaged with this feature, the desktop app checks only Mac releases and sh
 ## Verification and limits
 
 Release selection, prerelease ordering, cache behaviour, protected routes, malformed archive rejection, upgrade contracts, existing project retention, backup failure and app rollback are covered by tests. The Render web edition can be exercised live. Full Docker-host upgrade/recovery verification still requires an actual Docker host; simulated safety tests do not replace that recovery drill. Automatic installation remains disabled. Versioned public container-image publishing and optional unattended upgrade scheduling remain future work.
+
+Web v0.2.0-beta.3 adds personalized Home dashboards, feedback drafts and a new-installation sales pipeline template. Upgrade existing workspaces in place; their pipelines remain unchanged. The additive dashboard preferences table is created on startup. See [DASHBOARD.md](DASHBOARD.md) for behavior and backup compatibility.
