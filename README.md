@@ -6,7 +6,7 @@ A free, MIT-licensed, configurable CRM foundation.
 
 ## Start your company's private web workspace
 
-**[Web v0.2.0-beta.3 release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/web-v0.2.0-beta.3)** · **[Getting started](GETTING_STARTED.md)** · **[Features and beta limits](WEB_RELEASE.md)**
+**[Web v0.2.0-beta.4 release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/web-v0.2.0-beta.4)** · **[Getting started](GETTING_STARTED.md)** · **[Features and beta limits](WEB_RELEASE.md)**
 
 Each company runs its own installation and database, on its own domain or hosting-provider address. The software is free; hosting may cost money. This is a public beta, with Google sign-in, team invitations and separate Gmail/Calendar connections.
 
@@ -206,8 +206,24 @@ The private web edition includes **Sign in with Google** for explicitly linked w
 
 About SpRocket CRM shows the installed version and edition, with a build identifier when available. See [installed versions and upgrade design](WEB.md#installed-version-and-upgrade-design) for how updates preserve an existing workspace.
 
-**Updates:** Administrators can check edition-specific stable/beta releases under Configuration → Updates. Web v0.2.0-beta.3 includes installed-version/build information and a Docker host upgrade tool with backup and app rollback. Render updates target the existing service. See [update instructions and limits](UPDATES.md).
+**Updates:** Administrators can check edition-specific stable/beta releases under Configuration → Updates. Web v0.2.0-beta.4 includes installed-version/build information and a Docker host upgrade tool with backup and app rollback. Render updates target the existing service. See [update instructions and limits](UPDATES.md).
 
 ### Personalized Home and feedback
 
 Home has Daily desk, Sales overview and Relationship hub tabs, each focused on different work. Use **Customize home** to choose and order cards, a default tab, compact spacing and other personal preferences. The profile menu includes **Feature request & feedback**, which prepares an email to russ@rdfx.ca for the user to review and send. See [Home dashboards and feedback](DASHBOARD.md).
+
+### Personal sidebar
+
+The sidebar groups CRM, Work and data tools with consistent icons and working collapsible headings. **More tools** lets each user search, pin and remove shortcuts. Pins and collapsed sections are saved per user. See [sidebar navigation](NAVIGATION.md).
+
+### Reviewed enrichment
+
+Contacts and companies now support Apollo setup, LinkedIn fields, field-by-field review, selected-record lookups, reviewed Apollo/ZoomInfo CSV imports, source history and guarded undo. See [Enrichment setup and usage](ENRICHMENT.md). CSV enrichment is usable without an Apollo account; live Apollo verification remains pending an API-enabled account. Included in web v0.2.0-beta.4.
+
+### Email open tracking
+
+Opt-in tracking for messages sent from the hosted CRM, with **Opened N times**, expandable timestamps, per-inbox defaults and contact exclusions. Tracking uses each deployment's public HTTPS address and is off by default. See [Email tracking](EMAIL_TRACKING.md). Included in web v0.2.0-beta.4.
+
+### Follow-ups and templates
+
+A focused My tasks desk, quick scheduling from contacts/deals/emails, due-time overdue labels, safe rescheduling and personal/workspace email templates with reviewed personalization. See [Follow-ups and templates](FOLLOWUPS.md). Included in web v0.2.0-beta.4.

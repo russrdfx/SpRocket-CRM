@@ -77,7 +77,8 @@ def complete_task(db,data):
             if day>today:break
         next_date=day.isoformat();body['due_date']=next_date
     else:body['completed']=True;body['completed_at']=now
-    db.execute('UPDATE records SET body=?,updated=? WHERE id=?',(json.dumps(body),now,row['id']))
+    changed=db.execute('UPDATE records SET body=?,updated=? WHERE id=? AND updated=?',(json.dumps(body),now,row['id'],row['updated']))
+    if changed.rowcount!=1:raise ValueError('Task changed during completion. Refresh and try again.')
     db.execute('DELETE FROM reminder_state WHERE task_id=?',(row['id'],))
     db.execute('INSERT INTO activities VALUES(?,?,?,?)',(str(uuid.uuid4()),row['id'],json.dumps(dict(type='Note',text='Task completed'+('; next occurrence '+next_date if next_date else '.'))),now))
     return dict(ok=True,next_date=next_date)

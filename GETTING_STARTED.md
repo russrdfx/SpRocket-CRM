@@ -1,6 +1,6 @@
 # Start your company's SpRocket workspace
 
-SpRocket CRM Web **v0.2.0-beta.3** is a free, open-source public beta. Each company runs its own installation and database. Hosting may cost money. There is no shared public signup service, and you do not need a SpRocket domain.
+SpRocket CRM Web **v0.2.0-beta.4** is a free, open-source public beta. Each company runs its own installation and database. Hosting may cost money. There is no shared public signup service, and you do not need a SpRocket domain.
 
 ## Choose your hosting
 
@@ -145,3 +145,19 @@ For later upgrades, use **Configuration → Updates** and follow [UPDATES.md](UP
 ## Make Home your own
 
 Switch between **Daily desk**, **Sales overview** and **Relationship hub**. Choose **Customize home** to save your own layout. New installations include an editable Sales Pipeline under Configuration → Pipelines. Use the profile menu’s **Feature request & feedback** to prepare an email to russ@rdfx.ca. See [DASHBOARD.md](DASHBOARD.md).
+
+## Arrange your sidebar
+
+Use **More tools** to find a tool and pin it to the sidebar. Select a section heading to collapse it, or remove shortcuts you do not need. These choices are saved for your user. See [NAVIGATION.md](NAVIGATION.md).
+
+## Enrich contacts and companies
+
+Open **Configuration → Data Enrichment** to connect Apollo or import a provider CSV without an API account. Use **Enrich** on a record or select rows in the contacts/companies list. Review identity and proposed fields before applying; existing values stay unselected. See [the enrichment guide](ENRICHMENT.md) for mapping, limits, source history and undo.
+
+## Optional email open tracking
+
+On the web version, an administrator can enable **Configuration → Tracking & Analytics**. Choose your inbox default, or use **Track opens** for individual messages. Click **Opened N times** to view timestamps. See [the tracking guide](EMAIL_TRACKING.md) for details. Tracking requires a public HTTPS installation and applies to messages composed in SpRocket.
+
+## Follow-ups and reusable emails
+
+Use **Schedule follow-up** on a contact or deal, or **Create follow-up task** on an email. **Tasks** now opens My tasks with due-date views and completion/rescheduling actions. Find **Message Templates** in **More tools → Work**, then preview and apply a template in the email composer. See [the workflow guide](FOLLOWUPS.md).

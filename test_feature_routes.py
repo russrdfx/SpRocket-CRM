@@ -42,3 +42,28 @@ class FeatureRoutes(unittest.TestCase):
         self.assertIn('sample@example.test',self.request('/api/tools/csv-export',{'kind':'contacts'})[1]['csv'])
         self.assertEqual(self.request('/api/tools/view',dict(kind='contacts',name='SAMPLE view',filters={'query':'SAMPLE'}))[0],200)
         self.assertEqual(len(self.request('/api/state')[1]['views']),1)
+
+    def test_provider_permissions_review_and_history(self):
+        from enrichment_service import defaults
+        self.assertEqual(self.request('/api/enrichment/status')[0],200)
+        self.assertEqual(self.request('/api/enrichment/configure',defaults(),False)[0],403)
+        with patch.object(app.Handler,'sso_admin',return_value=False):
+            self.assertEqual(self.request('/api/enrichment/configure',defaults())[0],403)
+            self.assertEqual(self.request('/api/enrichment/verify',{})[0],403)
+            self.assertFalse(self.request('/api/enrichment/status')[1]['can_configure'])
+        self.assertEqual(self.request('/api/enrichment/lookup',{'id':'c'})[0],400)
+        self.assertEqual(self.request('/api/record',dict(id='c',kind='contacts',body=dict(name='SAMPLE',email='sample@example.com')))[0],200)
+        code,p=self.request('/api/enrichment/csv-preview',dict(kind='contacts',csv='email,job_title\nsample@example.com,Designer',mapping={'email':'email','job_title':'job_title'}));self.assertEqual(code,200)
+        self.assertEqual(self.request('/api/enrichment/commit',dict(selections=[dict(preview_id=p['preview_id'],record_id='c',fields=['job_title'])],match_confirmed=True))[0],200)
+        history=self.request('/api/enrichment/history?record_id=c')[1]['history'];self.assertEqual(len(history),1)
+        self.assertEqual(self.request('/api/enrichment/undo',dict(id=history[0]['id'],confirmed=True))[0],200)
+        with urllib.request.urlopen(self.url+'/enrichment.js') as response:self.assertEqual(response.status,200)
+    def test_tracking_routes_require_admin_and_origin(self):
+        self.assertEqual(self.request('/api/tracking')[0],200)
+        self.assertEqual(self.request('/api/tracking/configure',{'enabled':False},False)[0],403)
+        with patch.object(app.Handler,'sso_admin',return_value=False):self.assertEqual(self.request('/api/tracking/configure',{'enabled':False})[0],403)
+        with urllib.request.urlopen(urllib.request.Request(self.url+'/email-open/unknown.gif',method='HEAD')) as response:
+            self.assertEqual(response.status,200);self.assertEqual(response.read(),b'')
+        with urllib.request.urlopen(self.url+'/email-open/unknown.gif') as response:
+            from mail_tracking import PIXEL
+            self.assertEqual(response.read(),PIXEL);self.assertEqual(response.headers['Content-Type'],'image/gif')

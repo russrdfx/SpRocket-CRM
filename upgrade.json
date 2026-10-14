@@ -1,1 +1,1 @@
-{"version":"0.2.0-beta.3","database_schema":1,"compatible_from":["0.2.0-beta.1","0.2.0-beta.2","0.2.0-beta.3"],"app_only_rollback":true}
+{"version":"0.2.0-beta.4","database_schema":1,"compatible_from":["0.2.0-beta.1","0.2.0-beta.2","0.2.0-beta.3","0.2.0-beta.4"],"app_only_rollback":true}

@@ -14,10 +14,17 @@ FIELDS={
  'tasks':[field('completed','Completed','checkbox'),field('task_type','Task type','select',['To-do','Call','Email']),field('priority','Priority','select',PRIORITY),field('queue','Queue'),field('due_date','Due date','date'),field('due_time','Due time'),field('reminder_preference','Reminder preference','select',['No reminder','At due time','15 minutes before','1 hour before','1 day before']),field('repeat_preference','Repeat preference','select',['Does not repeat','Daily','Weekly','Monthly'])]
 }
 
+ENRICHMENT_FIELDS={
+ 'contacts':[field('linkedin_url','LinkedIn profile'),field('email_status','Email verification status'),field('city','City'),field('region','State / Region'),field('country','Country'),field('employer_name','Employer'),field('employer_domain','Employer domain'),field('seniority','Seniority'),field('department','Department')],
+ 'companies':[field('country','Country'),field('industry_text','Industry detail'),field('employee_range','Employee range'),field('estimated_annual_revenue','Estimated annual revenue','number'),field('revenue_range','Revenue range')]
+}
 def upgrade(settings):
-    if settings.get('creation_schema_version',0)>=3:return False
+    version=settings.get('creation_schema_version',0)
+    if version>=5:return False
     for typ in settings['types']:
         fields=typ.setdefault('fields',[]);keys={f['key'] for f in fields}
-        fields.extend(dict(f) for f in FIELDS.get(typ['id'],[]) if f['key'] not in keys)
-    settings['creation_schema_version']=3
+        additions=(FIELDS.get(typ['id'],[]) if version<3 else [])+(ENRICHMENT_FIELDS.get(typ['id'],[]) if version<4 else [])
+        if typ['id']=='contacts':additions+=[field('email_tracking_disabled','Exclude from email open tracking','checkbox')]
+        fields.extend(dict(f) for f in additions if f['key'] not in keys)
+    settings['creation_schema_version']=5
     return True

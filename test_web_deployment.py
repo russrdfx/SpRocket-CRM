@@ -14,13 +14,13 @@ class WebDeployment(unittest.TestCase):
     def tearDownClass(cls):cls.env.stop()
     def setUp(self):
         with self.web.server.connect() as db:
-            db.execute('TRUNCATE dashboard_preferences,web_users,web_invites,web_attempts,web_google_pending,update_status,records,user_profiles,mail_accounts,calendar_accounts,calendar_logs,web_provider_config,saved_views CASCADE')
+            db.execute('TRUNCATE followup_requests,email_templates,mail_tracking_config,mail_tracking_defaults,mail_tracking_events,mail_tracking,enrichment_config,provider_enrichment_jobs,enrichment_receipts,enrichment_usage,navigation_preferences,dashboard_preferences,web_users,web_invites,web_attempts,web_google_pending,update_status,records,user_profiles,mail_accounts,calendar_accounts,calendar_logs,web_provider_config,saved_views CASCADE')
     def request(self,path,data=None,cookie='',host='127.0.0.1:18766',origin='http://127.0.0.1:18766'):
         raw=json.dumps(data).encode() if data is not None else b''
         env=dict(PATH_INFO=path,REQUEST_METHOD='POST' if data is not None else 'GET',HTTP_HOST=host,HTTP_ORIGIN=origin,HTTP_COOKIE=cookie,CONTENT_TYPE='application/json',CONTENT_LENGTH=str(len(raw)),REMOTE_ADDR='127.0.0.1',**{'wsgi.input':io.BytesIO(raw)})
         result={}
         body=b''.join(self.web.application(env,lambda status,headers:result.update(status=int(status.split()[0]),headers=headers)))
-        result['body']=json.loads(body) if any(k=='Content-Type' and 'json' in v for k,v in result['headers']) else body.decode()
+        result['body']=json.loads(body) if any(k=='Content-Type' and 'json' in v for k,v in result['headers']) else body if any(k=='Content-Type' and v=='image/gif' for k,v in result['headers']) else body.decode()
         return result
     def setup_admin(self):
         data=dict(email='admin@example.com',name='SAMPLE — Admin',password='SamplePassword123!',token='sample-setup-code',workspace='SAMPLE — Web workspace')
@@ -75,6 +75,21 @@ class WebDeployment(unittest.TestCase):
         self.assertEqual(self.request('/api/dashboard/preferences',draft)['status'],401)
         self.assertEqual(self.request('/api/dashboard/preferences',draft,member,origin='https://evil.example')['status'],403)
         self.assertNotIn('events',self.request('/api/state',cookie=member)['body'])
+
+    def test_navigation_preferences_member_isolation(self):
+        import navigation_preferences
+        admin=self.setup_admin()
+        invite=self.request('/api/web/invite',dict(email='nav@example.com',role='member'),admin)
+        token=invite['body']['url'].split('token=')[1]
+        self.assertEqual(self.request('/api/web/join',dict(email='nav@example.com',name='SAMPLE — Member',password='SamplePassword123!',token=token))['status'],200)
+        login=self.request('/api/web/login',dict(email='nav@example.com',password='SamplePassword123!'))
+        member=next(v.split(';')[0] for k,v in login['headers'] if k=='Set-Cookie')
+        draft={'pins':['Reports'],'collapsed':['Reporting']}
+        self.assertEqual(self.request('/api/navigation/preferences',draft,member)['status'],200)
+        self.assertEqual(self.request('/api/state',cookie=member)['body']['navigation']['preferences'],draft)
+        self.assertEqual(self.request('/api/state',cookie=admin)['body']['navigation']['preferences']['pins'],navigation_preferences.DEFAULT_PINS)
+        self.assertEqual(self.request('/api/navigation/preferences',draft)['status'],401)
+        self.assertEqual(self.request('/api/navigation/preferences',draft,member,origin='https://evil.example')['status'],403)
 
     def test_brute_force_limit_and_query_parameters(self):
         self.setup_admin()
@@ -235,7 +250,7 @@ class WebDeployment(unittest.TestCase):
         with patch('updates.fetch_releases',return_value=[dict(tag_name='web-v0.2.0-beta.99',prerelease=True),dict(tag_name='v99.0.0')]):
             result=self.request('/api/updates/check',dict(channel='beta'),admin)
         self.assertEqual(result['status'],200);self.assertEqual(result['body']['installed']['edition'],'web');self.assertEqual(result['body']['latest']['version'],'0.2.0-beta.99')
-        self.assertEqual(self.request('/api/state',cookie=admin)['body']['release']['version'],'0.2.0-beta.3')
+        self.assertEqual(self.request('/api/state',cookie=admin)['body']['release']['version'],'0.2.0-beta.4')
     def test_web_schema_guard_blocks_newer_database(self):
         from web_migrations import migrate
         with self.web.server.connect() as db:db.execute('UPDATE web_schema_version SET version=2 WHERE id=1')
@@ -244,3 +259,55 @@ class WebDeployment(unittest.TestCase):
         finally:
             with self.web.server.connect() as db:db.execute('UPDATE web_schema_version SET version=1 WHERE id=1')
         migrate(self.web.server.connect)
+
+    def test_enrichment_postgres_review_and_undo(self):
+        admin=self.setup_admin()
+        self.assertEqual(self.request('/api/enrichment/status',cookie=admin)['status'],200)
+        self.assertEqual(self.request('/api/record',dict(id='sample-contact',kind='contacts',body=dict(name='SAMPLE',email='sample@example.com')),admin)['status'],200)
+        p=self.request('/api/enrichment/csv-preview',dict(kind='contacts',csv='email,job_title\nsample@example.com,Designer',mapping={'email':'email','job_title':'job_title'}),admin)
+        self.assertEqual(p['status'],200)
+        applied=self.request('/api/enrichment/commit',dict(selections=[dict(preview_id=p['body']['preview_id'],record_id='sample-contact',fields=['job_title'])],match_confirmed=True),admin)
+        self.assertEqual(applied['status'],200)
+        history=self.request('/api/enrichment/history?record_id=sample-contact',cookie=admin)['body']['history'];self.assertEqual(len(history),1)
+        self.assertEqual(self.request('/api/enrichment/undo',dict(id=history[0]['id'],confirmed=True),admin)['status'],200)
+        self.assertNotIn('job_title',self.request('/api/state',cookie=admin)['body']['records'][0])
+        from enrichment_service import defaults
+        config=defaults();config.update(api_key='sample-provider-key',enabled=True,daily_limit=1)
+        saved=self.request('/api/enrichment/configure',config,admin)
+        self.assertEqual(saved['status'],200);self.assertNotIn('sample-provider-key',json.dumps(saved['body']))
+        with patch('enrichment_service.apollo_request',return_value={'person':{'name':'SAMPLE','title':'Designer'},'match_confidence':'high'}) as provider:
+            lookup=self.request('/api/enrichment/lookup',dict(id='sample-contact',confirmed=True),admin);self.assertEqual(lookup['status'],200)
+            cached=self.request('/api/enrichment/lookup',dict(id='sample-contact',confirmed=True),admin);self.assertTrue(cached['body']['reused']);self.assertEqual(provider.call_count,1)
+        self.assertEqual(self.request('/api/enrichment/status',cookie=admin)['body']['attempts_today'],1)
+
+
+    def test_tracking_pixel_public_but_settings_private(self):
+        from mail_tracking import PIXEL
+        self.assertEqual(self.request('/email-open/unknown.gif')['body'],PIXEL)
+        self.assertEqual(self.request('/api/tracking')['status'],401)
+        admin=self.setup_admin()
+        self.assertEqual(self.request('/api/tracking/configure',{'enabled':True},admin)['status'],400) # localhost isn't a delivery domain.
+        with patch('mail_tracking.origin',return_value='https://crm.example.test'):
+            self.assertEqual(self.request('/api/tracking/configure',{'enabled':True},admin)['status'],200)
+            owner=json.dumps([self.web.accounts.issuer,self.web.accounts.user({'Cookie':admin})['subject']])
+            with self.web.server.connect() as db:
+                db.execute('INSERT INTO mail_accounts(id,owner,provider,email,tokens) VALUES(?,?,?,?,?)',('sample-tracked',owner,'google','sample@example.test','not-a-real-token'))
+                job=self.web.server.MAIL.tracking.prepare(db,owner,'sample-tracked','sample-request-12345','person@example.test',True)
+                self.web.server.MAIL.tracking.accept(db,job,'sample-message')
+            path='/email-open/'+job['url'].split('/email-open/')[1]
+            self.assertEqual(self.request(path)['body'],PIXEL)
+            self.assertEqual(self.request(path)['body'],PIXEL)
+            with self.web.server.connect() as db:self.assertEqual(db.execute('SELECT COUNT(*) FROM mail_tracking_events').fetchone()[0],1)
+        self.assertEqual(self.request('/api/tracking/configure',{'enabled':False},admin,origin='https://evil.example')['status'],403)
+    def test_followups_and_templates_postgres(self):
+        admin=self.setup_admin()
+        body=dict(request_id='sample-followup-request',name='SAMPLE follow-up',due_date='2026-10-20',due_time='10:00')
+        first=self.request('/api/followups/create',body,admin);self.assertEqual(first['status'],200)
+        self.assertEqual(first['body']['id'],self.request('/api/followups/create',body,admin)['body']['id'])
+        row=self.request('/api/state',cookie=admin)['body']['records'][0]
+        self.assertEqual(self.request('/api/followups/reschedule',dict(id=row['id'],expected_updated=row['updated'],due_date='2026-10-21',due_time='11:00'),admin)['status'],200)
+        template=self.request('/api/templates/save',dict(name='SAMPLE',subject='Hello',body='From {{user.name}}',html='',scope='workspace'),admin)
+        self.assertEqual(template['status'],200)
+        preview=self.request('/api/templates/render',dict(id=template['body']['id'],email='sample@example.test'),admin)
+        self.assertEqual(preview['body']['body'],'From SAMPLE — Admin')
+        self.assertEqual(self.request('/api/templates/save',{},admin,origin='https://evil.example')['status'],403)

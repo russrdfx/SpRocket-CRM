@@ -1,0 +1,17 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const context=vm.createContext({state:null,shell:()=>{},document:{addEventListener:()=>{}},window:{addEventListener:()=>{}},page:'dashboard',settingsSection:'Account Defaults',esc:s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),type:id=>({id,name:'Custom <records>'})});
+vm.runInContext(fs.readFileSync(__dirname+'/web/navigation.js','utf8'),context);
+context.state={navigation:{catalog:JSON.parse(fs.readFileSync(__dirname+'/web/navigation-catalog.json','utf8')),preferences:{pins:['Contacts','Deals','Data Enrichment'],collapsed:[]}}};
+assert.equal(context.navCurrent('Dashboards'),true);assert.equal(context.navCurrent('Contacts'),false);
+context.page='contact:sample';assert.equal(context.navCurrent('Contacts'),true);assert.equal(context.navCurrent('Deals'),false);
+context.page='deal:sample';assert.equal(context.navCurrent('Deals'),true);
+context.page='settings';context.settingsSection='Data Enrichment';assert.equal(context.navCurrent('Data Enrichment'),true);assert.equal(context.navCurrent('Configuration'),false);
+context.state.navigation.preferences.pins=[];assert.equal(context.navCurrent('Configuration'),true);
+assert.equal(context.navRoute('Message Templates'),'templates');assert.equal(context.navPlanned('Message Templates'),false);assert.equal(context.navRoute('Calendar'),'calendar');assert.equal(context.navRoute('record:projects'),'projects');
+assert.equal(context.navPlanned('Calendar'),false);assert.equal(context.navPlanned('Reports'),false);assert.equal(context.navPlanned('Workflows'),true);
+assert.equal(context.navGroup('Calendar'),'Work');assert.equal(context.navGroup('Marketing Emails'),'Marketing');
+const custom=context.navButton('record:projects');assert.ok(custom.includes('Custom &lt;records&gt;'));assert.ok(!custom.includes('Custom <records>'));assert.ok(custom.includes('<svg'));assert.ok(!custom.includes('◇'));
+assert.equal(context.navInsideTools({composedPath:()=>[{}, {id:'more-menu'}, {}]}),true);
+assert.equal(context.navInsideTools({composedPath:()=>[{}, {id:'more'}, {}]}),true);
+assert.equal(context.navInsideTools({composedPath:()=>[{}, {id:'content'}, {}]}),false);
+console.log('Navigation routing, nested active records, grouping, planned status and label escaping passed');

@@ -18,6 +18,7 @@ function render(){
  if(page==='inbox')return mailView();
  if(page==='cleanup')return cleanupView();
  if(page==='tasks')return recordWorkspaceView();
+ if(page==='templates')return templatesView($('#content'));
  if(page.startsWith('module:'))return plannedView(page.slice(7));
  if(page==='dashboard')return dashboard();
  if(type(page))return recordWorkspaceView();
@@ -99,27 +100,8 @@ function configModal(title,html,onSave){const m=$('#modal');m.innerHTML=`<form i
 $('#modal').addEventListener('close',()=>{if(!$('#modal').open||!$('#creation-form'))$('#modal').classList.remove('record-drawer')});
 const originalRender=render; render=function(){originalRender();shell();};
 refresh().catch(e=>{$('#content').textContent='Unable to load workspace: '+e.message});
-const modules={
- 'CRM':['Contacts','Companies','Deals','Tickets','Products','Orders','Segments','Inbox','Calls','Meetings','Tasks','Message Templates','Snippets','Playbooks'],
- 'Marketing':['AEO','Marketing Emails','Ads','Events','Forms','Buyer Intent','Brand','SEO','Campaigns','Social'],
- 'Content':['Website Pages','Landing Pages','Blog','Memberships','Design Manager','Videos','Podcasts','Case Studies','Embeds','Remix'],
- 'Sales':['Calendar','Meetings Scheduler','Activity Feed','Sales Workspace','Prospecting Agent','Documents','Sequences','Forecast','Sales Analytics'],
- 'Revenue':['Revenue Overview','Contracts','Invoices','Payments','Subscriptions','Payment Links','Revenue Agent','Quotes','Billing Portal'],
- 'Service':['Chatflows','Help Desk','Customer Success','Customer Agent','Knowledge Base','Customer Portal','Feedback Surveys','Service Analytics'],
- 'Data Management':['Data Agent','Data Integration','Event Management','Data Model','Data Enrichment','Data Quality','Data Studio'],
- 'Agents':['Context','Agent Marketplace','Agent Hub'], 'Automation':['Workflows'], 'Reporting':['Dashboards','Reports'], 'Development':['Configuration']
-};
-let menuGroup='CRM';
-function destination(name){const built={Contacts:'contacts',Companies:'companies',Deals:'deals',Tickets:'tickets',Tasks:'tasks',Inbox:'inbox',Dashboards:'dashboard',Reports:'reports',Configuration:'settings','Data Model':'settings','Activity Feed':'dashboard','Data Quality':'cleanup'};go(built[name]||'module:'+name);}
+function destination(name){const built={'Message Templates':'templates',Contacts:'contacts',Companies:'companies',Deals:'deals',Tickets:'tickets',Tasks:'tasks',Inbox:'inbox',Dashboards:'dashboard',Reports:'reports',Configuration:'settings','Data Model':'settings','Activity Feed':'dashboard','Data Quality':'cleanup'};go(built[name]||'module:'+name);}
 function shell(){
- const nav=$('#nav');nav.innerHTML=`<button data-dest="Dashboards">⌂ Home</button><hr>${['Contacts','Deals','Companies','Tasks','Inbox','Segments','Invoices'].map(n=>`<button data-dest="${n}">◇ ${n}</button>`).join('')}<div class="label">⌄ Marketing</div><button data-dest="Marketing Emails">✉ Marketing Emails</button><div class="label">⌄ Sales</div><button data-dest="Prospecting Agent">◎ Prospecting Agent</button><div class="label">⌄ Platform</div><button data-dest="Dashboards">▥ Dashboards</button><button data-dest="Workflows">⌘ Workflows</button><button id="more" aria-expanded="false">••• More ›</button><button data-dest="Configuration">⚙ Configuration</button>`;
- // User-created object types remain directly accessible.
- state.settings.types.filter(t=>!['contacts','companies','deals','tasks','tickets'].includes(t.id)).forEach(t=>{const b=document.createElement('button');b.textContent='◇ '+t.name;b.onclick=()=>go(t.id);nav.append(b)});
- nav.querySelectorAll('[data-dest]').forEach(b=>{b.onclick=()=>destination(b.dataset.dest);b.classList.toggle('active',page==={'Contacts':'contacts','Companies':'companies','Deals':'deals','Tasks':'tasks','Inbox':'inbox','Dashboards':'dashboard','Configuration':'settings'}[b.dataset.dest])});
- let menu=$('#more-menu');if(!menu){menu=document.createElement('div');menu.id='more-menu';menu.className='more-menu';menu.hidden=true;document.body.append(menu)}
- const populate=()=>{menu.innerHTML=`<div class="more-groups">${Object.keys(modules).map(g=>`<button data-group="${esc(g)}" class="${g===menuGroup?'selected':''}">${esc(g)} ›</button>`).join('')}</div><div class="more-items">${modules[menuGroup].map(n=>`<button data-item="${esc(n)}">${esc(n)}</button>`).join('')}</div>`;menu.querySelectorAll('[data-group]').forEach(b=>{b.onclick=()=>{menuGroup=b.dataset.group;populate()}});menu.querySelectorAll('[data-item]').forEach(b=>b.onclick=()=>{menu.hidden=true;destination(b.dataset.item)})};populate();menu.hidden=true;
- $('#more').onclick=()=>{menu.hidden=!menu.hidden;$('#more').setAttribute('aria-expanded',String(!menu.hidden))};
- document.onkeydown=e=>{if(e.key==='Escape'){menu.hidden=true;$('#more').setAttribute('aria-expanded','false')}};
  const identity=state.auth?.user,name=state.auth?.profile?.name||identity?.name||(state.auth?.enabled?'Signed-in user':'Local demo user');
  const role=state.auth?.is_admin?(state.auth.enabled?'Account administrator':'Local administrator'):'Account member';
  const header=$('header');header.innerHTML=`<input id="global-search" aria-label="Search all records" placeholder="Search Sprocket CRM"><button id="quick-create">+ Create</button><div class="profile-wrap"><button id="profile-toggle" aria-expanded="false" aria-controls="profile-menu"><span class="profile-avatar">${esc(name.slice(0,1).toUpperCase())}</span><span>${esc(name)}</span><span aria-hidden="true">⌄</span></button><div id="profile-menu" class="profile-menu" hidden><div class="profile-summary"><b>${esc(name)}</b><span class="profile-role">${esc(role)}</span><small>${state.deployment?.web?(state.auth?.user?.method==='google'?'Signed in with Google':'Signed in with workspace account'):state.auth?.enabled?'Signed in with SSO':'Local demo · no authenticated identity'}</small><button id="profile-preferences">Profile & preferences</button></div><div class="profile-account"><small>Account</small><b>${esc(state.settings.name)}</b><button id="profile-account">Account settings</button></div>${state.auth?.is_admin?`<button id="profile-security">${state.deployment?.web?'Security & sign-in':'Security & SSO'}</button>`:''}<button id="profile-help">About SpRocket CRM</button>${state.auth?.enabled?'<button id="sign-out">Sign out</button>':''}</div></div>`;
@@ -127,7 +109,7 @@ function shell(){
  const closeProfile=()=>{profileMenu.hidden=true;toggle.setAttribute('aria-expanded','false')};
  toggle.onclick=()=>{profileMenu.hidden=!profileMenu.hidden;toggle.setAttribute('aria-expanded',String(!profileMenu.hidden))};
  document.onclick=e=>{if(!e.target.closest('.profile-wrap'))closeProfile()};
- const originalKey=document.onkeydown;document.onkeydown=e=>{originalKey?.(e);if(e.key==='Escape'){const wasOpen=!profileMenu.hidden;closeProfile();if(wasOpen)toggle.focus()}};
+ document.onkeydown=e=>{if(e.key==='Escape'){const wasOpen=!profileMenu.hidden;closeProfile();if(wasOpen)toggle.focus()}};
  $('#profile-preferences').onclick=()=>{closeProfile();const m=$('#modal'),profile=state.auth?.profile||{};m.innerHTML=`<form id="profile-form"><h2>Profile & preferences</h2><label for="profile-name">Display name</label><input id="profile-name" name="name" maxlength="200" value="${esc(profile.name||identity?.name||'')}"><label for="profile-title">Job title</label><input id="profile-title" name="job_title" maxlength="200" value="${esc(profile.job_title)}"><label for="profile-phone">Phone</label><input id="profile-phone" name="phone" maxlength="80" value="${esc(profile.phone)}"><label>Access</label><p>${esc(role)}</p><p>Your profile applies in this CRM. Connected email uses the provider’s sender name unless you set an override in Inbox → Sender & signature.</p><p class="error" id="profile-error" role="alert"></p><div class="actions"><button type="button" id="profile-close">Cancel</button><button>Save profile</button></div></form>`;$('#profile-close').onclick=()=>m.close();$('#profile-form').onsubmit=async e=>{e.preventDefault();const button=e.target.querySelector('button:not([type])');button.disabled=true;try{await api('/api/profile',Object.fromEntries(new FormData(e.target)));m.close();await refresh();toast('Profile saved')}catch(err){$('#profile-error').textContent=err.message;button.disabled=false}};m.showModal()};
  $('#profile-account').onclick=()=>{closeProfile();settingsSection='Account Defaults';go('settings')};
  if($('#profile-security'))$('#profile-security').onclick=()=>{closeProfile();settingsSection='Security';go('settings')};

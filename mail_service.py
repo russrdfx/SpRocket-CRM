@@ -147,6 +147,8 @@ def microsoft_message(m):
 class MailService:
     def __init__(self, connect):
         self.connect = connect
+        from mail_tracking import Tracking
+        self.tracking=Tracking(lambda:self.connect())
         self.pending = {}
         self.imports = {}
         self.lock = threading.RLock()
@@ -164,6 +166,8 @@ class MailService:
         CREATE TABLE IF NOT EXISTS mail_ranges (account_id TEXT PRIMARY KEY REFERENCES mail_accounts(id) ON DELETE CASCADE, selection TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS mail_tasks (message_id TEXT PRIMARY KEY REFERENCES mail_messages(id) ON DELETE CASCADE, task_id TEXT NOT NULL REFERENCES records(id) ON DELETE CASCADE);
         ''')
+
+        self.tracking.initialize(db)
 
     def cipher(self):
         try:
@@ -208,7 +212,7 @@ class MailService:
                 account['auto'] = dict(auto) if auto else dict(enabled=False,status='Paused',error='')
                 signature=db.execute('SELECT html FROM mail_html_signatures WHERE account_id=?',(account['id'],)).fetchone()
                 account['signature_html'] = signature[0] if signature else ''
-        return dict(providers=providers, accounts=accounts)
+        return dict(providers=providers, accounts=accounts, tracking=self.tracking.status(owner))
 
     def profile(self, owner):
         with self.connect() as db:
@@ -397,6 +401,9 @@ class MailService:
             for m in messages:
                 m['matches'] = self.matched(db,m)
                 m['logged_records'] = [r[0] for r in db.execute('SELECT record_id FROM mail_logs WHERE message_id=?',(m['id'],))]
+            summaries=self.tracking.summaries(db,[m['id'] for m in messages])
+            for m in messages:
+                if m['id'] in summaries:m['tracking']=summaries[m['id']]
             return sorted(messages, key=lambda m:m['date'], reverse=True)[:200]
 
     def import_range(self, data):
@@ -587,8 +594,10 @@ class MailService:
             if len(recipient)>320 or '\r' in recipient or '\n' in recipient or not re.fullmatch(r'[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+',recipient): raise MailError('Enter one valid recipient email address.')
             subject, text = str(data.get('subject','')).strip(), str(data.get('text','')).strip()
             if not subject or len(subject)>500 or '\r' in subject or '\n' in subject or not text or len(text)>50000: raise MailError('Subject and message are required (maximum 500 / 50,000 characters).')
+            if re.search(r'{{\s*[^{}]+\s*}}',subject+' '+text):raise MailError('Replace unresolved template placeholders before sending.')
             raw_html=data.get('html','')
             if not isinstance(raw_html,str) or len(raw_html)>200000:raise MailError('Message formatting is too large.')
+            if re.search(r'{{\s*[^{}]+\s*}}',raw_html):raise MailError('Replace unresolved template placeholders before sending.')
             html=safe_email_html(raw_html) if raw_html else ''
             with self.connect() as db:
                 signature=db.execute('SELECT html FROM mail_html_signatures WHERE account_id=?',(account['id'],)).fetchone()
@@ -600,6 +609,9 @@ class MailService:
                 text += '\n\n'+account['signature']
                 if html:html+='<br><p>'+__import__('html').escape(account['signature']).replace('\n','<br>')+'</p>'
             if len(html)>200000:raise MailError('Message and signature together exceed the formatting limit.')
+            track=data.get('track_opens',False)
+            if type(track) is not bool:raise MailError('Choose whether to track opens.')
+            if track and not html:html='<p>'+__import__('html').escape(text).replace('\n','<br>')+'</p>'
             delivery_html,images=inline_images(html)
             token, provider = self.access(account), account['provider']
             send_id = data.get('send_id', '')
@@ -608,7 +620,9 @@ class MailService:
             with self.connect() as db:
                 if db.execute('SELECT 1 FROM mail_sends WHERE owner=? AND send_id=?', (owner,send_id)).fetchone():
                     raise MailError('This send was already attempted. Check Sent mail before composing again.')
+                tracking=self.tracking.prepare(db,owner,account['id'],send_id,recipient,track)
                 db.execute('INSERT INTO mail_sends VALUES(?,?,?)', (owner,send_id,'attempted'))
+            if tracking:delivery_html+='<img src="'+tracking['url']+'" width="1" height="1" alt="" style="display:block">'
             sender_name = self.sender_name(owner,account,token)
             sender_header = formataddr((sender_name,account['email'])) if sender_name else account['email']
             # Never automatically retry a send: delivery may have succeeded before a timeout.
@@ -641,6 +655,7 @@ class MailService:
             with self.connect() as db:
                 ident=str(uuid.uuid4())
                 db.execute('INSERT INTO mail_messages VALUES(?,?,?,?)',(ident,account['id'],provider_id,json.dumps(m)))
+                self.tracking.accept(db,tracking,ident)
                 self.ensure_correspondents(db,m,account)
                 m['id']=ident
                 self.log_message(db,m)
@@ -661,6 +676,7 @@ class MailService:
         with self.lock, self.connect() as db:
             self.account(db,owner,data['account_id'])
             if action == 'disconnect':
+                self.tracking.archive(db,data['account_id'])
                 db.execute('DELETE FROM mail_accounts WHERE id=?',(data['account_id'],))
                 return dict(ok=True)
             if action == 'preferences':

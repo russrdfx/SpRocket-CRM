@@ -1,6 +1,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const context=vm.createContext({URLSearchParams,location:{search:''},contactDetails:()=>{},dealDetails:()=>{},esc:v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))});
+const context=vm.createContext({URLSearchParams,location:{search:''},contactDetails:()=>{},dealDetails:()=>{},settingsView:()=>{},setInterval:()=>{},esc:v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))});
 vm.runInContext(fs.readFileSync(__dirname+'/web/mail.js','utf8'),context);
+vm.runInContext(fs.readFileSync(__dirname+'/web/tracking.js','utf8'),context);
 const activity={type:'Email',mail_message_id:'old',created:'2026-10-10T00:00:00Z',text:'Sample subject\nFrom: sender@example.test\nTo: receiver@example.test\n\nFirst paragraph\n\nSecond paragraph'};
 const card=context.activityContent(activity);assert.ok(card.includes('Sample subject'));assert.ok(card.includes('<dt>From</dt>'));assert.ok(card.includes('First paragraph\n\nSecond paragraph'));assert.ok(!card.includes('From: sender'));
 const hostile=context.emailBody({html:'<script>parent.alert(1)</script><img src="https://tracker.example/pixel"><form action="https://attacker.example">test</form>',text:'Sample'});

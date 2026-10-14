@@ -48,6 +48,7 @@ class WebHandler(server.Handler):
         raw=(server.ROOT/'web'/name).read_bytes();self.status=200;self.send_header('Content-Type','text/html; charset=utf-8');self.wfile.write(raw)
     def do_GET(self):
         path=urlsplit(self.path).path
+        if path.startswith('/email-open/'):return self.tracking_pixel()
         if path=='/health':return self.reply(200,{'ready':True})
         if path.startswith(('/desktop/','/api/desktop/')):return self.reply(404,{'error':'Not available in the web version.'})
         if path in ('/setup','/join'):return self.html('web-login.html')
@@ -140,6 +141,7 @@ def application(environ,start_response):
     try:
         if environ['REQUEST_METHOD']=='GET':handler.do_GET()
         elif environ['REQUEST_METHOD']=='POST':handler.do_POST()
+        elif environ['REQUEST_METHOD']=='HEAD' and environ.get('PATH_INFO','').startswith('/email-open/'):handler.do_HEAD()
         else:handler.reply(405,{'error':'Method not allowed'})
     except Exception:
         # Provider tokens, database URLs and submitted passwords never enter the response/logs.

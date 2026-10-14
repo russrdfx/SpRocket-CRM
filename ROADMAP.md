@@ -67,3 +67,19 @@ Web v0.2.0-beta.2 adds edition-specific release checks, stable/beta selection, i
 ## Personalized Home delivered
 
 Three purpose-specific Home tabs, owner-scoped card visibility/order and layout preferences, a private calendar agenda, direct task completion, deal and contact follow-up summaries, and compact deduplicated conversations. New installations have a removable, editable Sales Pipeline template; upgrades preserve existing configuration. Profile-menu feedback prepares a user-reviewed email to russ@rdfx.ca with version context. See [DASHBOARD.md](DASHBOARD.md).
+
+## Personal navigation delivered
+
+Consistent SVG icons, organized CRM/Work sections, saved collapsible headings, searchable categorized tools, owner-scoped pin/unpin preferences, custom record shortcuts and explicit planned-feature labels. Home remains the single dashboard entry. See [NAVIGATION.md](NAVIGATION.md).
+
+## Enrichment development update
+
+Implemented locally: encrypted Apollo configuration, provider field mapping, daily attempt limits, contact/company LinkedIn properties, explicit lookup consent, reviewed suggestions, selected-record enrichment, existing-record CSV matching, provenance and guarded undo. Real Apollo account verification is pending. Next: native ZoomInfo adapter with account entitlement checks, optional asynchronous business phone retrieval, scheduled refresh and provider fallback. LinkedIn data access requires an approved provider integration; profile links and Apollo matching are supported now.
+
+## Email tracking development update
+
+Implemented locally: hosted opt-in tracking, administrator switch, per-inbox defaults, per-message selection, contact exclusions, open counts with expandable timestamps/relative ages, authenticated status updates, expiry, rapid-request deduplication and preservation of CRM history on disconnect. Real recipient-client verification is pending deployment. Future work: optional link tracking and Gmail composition integration. Existing emails and directly composed Gmail messages remain untracked.
+
+## Follow-up workflow development update
+
+Implemented locally: personal task desk with due-time overdue labels and owner scopes; contact/deal/email scheduling; task rescheduling and guarded completion; reusable personal/workspace templates, supported placeholders and composer preview/application. Released in web v0.2.0-beta.4. Deal forecasting and guided company onboarding remain subsequent priorities.

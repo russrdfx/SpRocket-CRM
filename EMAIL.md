@@ -114,3 +114,7 @@ The open CRM checks enabled accounts roughly once per minute, paging IDs and imp
 **Sender & signature → Rich text / HTML** offers bold, italic, underline, lists, links and uploaded PNG/JPEG/GIF/WebP images under 150 KB. Pasted content enters as plain text. Formatting is filtered server-side, scripts and remote images are excluded, and uploaded images are delivered as inline MIME/Graph attachments. HTML messages also have a plain-text alternative for Gmail; Microsoft receives an HTML body. The signature is appended once by the server. Message and signature HTML together are limited to 200,000 characters, with up to eight small inline images. Incoming attachment downloads remain unsupported.
 
 Provider delivery, HTML signatures and automatic checks need real-account testing for both providers. Automated checks use mock accounts; implementation testing does not send real mail.
+
+## Email open tracking
+
+Hosted installations support optional open tracking for newly sent Gmail/Microsoft messages. Enable it in **Configuration → Tracking & Analytics**, set an inbox default if desired, then choose **Track opens** in the composer. Click **Opened N times** in sent-mail details or contact/deal activity to expand timestamps and relative ages. See [Email open tracking](EMAIL_TRACKING.md) for hosting requirements, exclusions, expiry and counting behavior. This addition is included in web v0.2.0-beta.4; live-client verification remains pending.

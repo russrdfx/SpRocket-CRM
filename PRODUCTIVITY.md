@@ -31,3 +31,7 @@ Run `python3 -m unittest discover` and `node test_email_ui.cjs` / `node test_pro
 ## Your profile
 
 Open **Profile & preferences** in the top-right menu, or **Configuration → General → Profile**, to edit display name, job title and phone. Both paths use the same saved profile. Calendar, enrichment, CSV imports, saved views and additional automation discussed for the next phase are not included in this source update.
+
+## Focused task desk and email templates
+
+The current local development adds My/Team/Unassigned tasks, overdue/today/upcoming views, context-linked follow-up scheduling, rescheduling with stale-edit protection, and personal/shared email templates. See [Follow-ups and templates](FOLLOWUPS.md). Reminder delivery still uses the existing foreground reminder system.

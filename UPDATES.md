@@ -28,7 +28,7 @@ Use a trusted copy of `deploy/upgrade.py` from this release with `--root` pointi
 Preview first:
 
 ```sh
-python3 deploy/upgrade.py --root /srv/sprocket --version web-v0.2.0-beta.3
+python3 deploy/upgrade.py --root /srv/sprocket --version web-v0.2.0-beta.4
 ```
 
 For the first upgrade from the original web beta, which had no version metadata, also supply `--from-version 0.2.0-beta.1` after confirming that this is what you installed. Never use that option to bypass a known incompatible version.
@@ -36,7 +36,7 @@ For the first upgrade from the original web beta, which had no version metadata,
 Approve after reviewing the target:
 
 ```sh
-python3 deploy/upgrade.py --root /srv/sprocket --version web-v0.2.0-beta.3 --approve
+python3 deploy/upgrade.py --root /srv/sprocket --version web-v0.2.0-beta.4 --approve
 ```
 
 The tool:
@@ -70,4 +70,8 @@ Once packaged with this feature, the desktop app checks only Mac releases and sh
 
 Release selection, prerelease ordering, cache behaviour, protected routes, malformed archive rejection, upgrade contracts, existing project retention, backup failure and app rollback are covered by tests. The Render web edition can be exercised live. Full Docker-host upgrade/recovery verification still requires an actual Docker host; simulated safety tests do not replace that recovery drill. Automatic installation remains disabled. Versioned public container-image publishing and optional unattended upgrade scheduling remain future work.
 
-Web v0.2.0-beta.3 adds personalized Home dashboards, feedback drafts and a new-installation sales pipeline template. Upgrade existing workspaces in place; their pipelines remain unchanged. The additive dashboard preferences table is created on startup. See [DASHBOARD.md](DASHBOARD.md) for behavior and backup compatibility.
+Web v0.2.0-beta.3 added personalized Home dashboards, feedback drafts and a new-installation sales pipeline template. Upgrade existing workspaces in place; their pipelines remain unchanged. The additive dashboard preferences table is created on startup. See [DASHBOARD.md](DASHBOARD.md) for behavior and backup compatibility.
+
+## Web v0.2.0-beta.4
+
+Adds personal navigation, reviewed enrichment, opt-in hosted email-open tracking, contextual follow-ups and email templates. Upgrade in place after a verified backup. New tables and contact/company properties are additive; retired existing properties and customized pipelines are preserved. Provider credentials and the installation encryption key are retained. Email tracking starts disabled; Apollo requires an administrator-supplied API key. Neither is enabled automatically during upgrade. See [ENRICHMENT.md](ENRICHMENT.md), [EMAIL_TRACKING.md](EMAIL_TRACKING.md) and [FOLLOWUPS.md](FOLLOWUPS.md).

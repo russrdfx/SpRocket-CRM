@@ -1,0 +1,100 @@
+{
+  "CRM": [
+    "Contacts",
+    "Companies",
+    "Deals",
+    "Tickets",
+    "Products",
+    "Orders",
+    "Segments"
+  ],
+  "Work": [
+    "Inbox",
+    "Tasks",
+    "Calendar",
+    "Calls",
+    "Meetings",
+    "Message Templates",
+    "Snippets",
+    "Playbooks"
+  ],
+  "Marketing": [
+    "AEO",
+    "Marketing Emails",
+    "Ads",
+    "Events",
+    "Forms",
+    "Buyer Intent",
+    "Brand",
+    "SEO",
+    "Campaigns",
+    "Social"
+  ],
+  "Content": [
+    "Website Pages",
+    "Landing Pages",
+    "Blog",
+    "Memberships",
+    "Design Manager",
+    "Videos",
+    "Podcasts",
+    "Case Studies",
+    "Embeds",
+    "Remix"
+  ],
+  "Sales": [
+    "Meetings Scheduler",
+    "Activity Feed",
+    "Sales Workspace",
+    "Prospecting Agent",
+    "Documents",
+    "Sequences",
+    "Forecast",
+    "Sales Analytics"
+  ],
+  "Revenue": [
+    "Revenue Overview",
+    "Contracts",
+    "Invoices",
+    "Payments",
+    "Subscriptions",
+    "Payment Links",
+    "Revenue Agent",
+    "Quotes",
+    "Billing Portal"
+  ],
+  "Service": [
+    "Chatflows",
+    "Help Desk",
+    "Customer Success",
+    "Customer Agent",
+    "Knowledge Base",
+    "Customer Portal",
+    "Feedback Surveys",
+    "Service Analytics"
+  ],
+  "Data Management": [
+    "Data Agent",
+    "Data Integration",
+    "Event Management",
+    "Data Model",
+    "Data Enrichment",
+    "Data Quality",
+    "Data Studio"
+  ],
+  "Agents": [
+    "Context",
+    "Agent Marketplace",
+    "Agent Hub"
+  ],
+  "Automation": [
+    "Workflows"
+  ],
+  "Reporting": [
+    "Dashboards",
+    "Reports"
+  ],
+  "Development": [
+    "Configuration"
+  ]
+}

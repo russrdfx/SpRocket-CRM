@@ -44,7 +44,8 @@ function reminderDue(t,now=new Date()){
 }
 async function checkReminders(){
  if(!state)return;reminderStates=(await api('/api/reminders')).states;
- const owners=[state.auth?.profile?.name,state.auth?.user?.name,...(state.mail?.accounts||[]).map(a=>a.email)].filter(Boolean).map(s=>s.toLowerCase());
+ const owners=[state.auth?.profile?.name,state.auth?.user?.name,state.auth?.user?.email,...(state.mail?.accounts||[]).map(a=>a.email)].filter(Boolean).map(s=>s.toLowerCase());
+ if(!owners.length)owners.push('local operator');
  dueReminders=state.records.filter(t=>t.kind==='tasks'&&reminderDue(t)&&(!t.owner||owners.includes(t.owner.toLowerCase()))&&!reminderStates.some(s=>s.task_id===t.id&&s.fingerprint===reminderFingerprint(t)&&(s.dismissed||new Date(s.snooze_until)>new Date())));
  const button=$('#reminder-toggle');if(button)button.textContent='Reminders'+(dueReminders.length?' ('+dueReminders.length+')':'');
  if(typeof Notification!=='undefined'&&Notification.permission==='granted')for(const task of dueReminders){const key='sprocket-reminder:'+ (state.auth?.user?.sub||'local')+':'+task.id+':'+reminderFingerprint(task);if(!localStorage.getItem(key)){const notice=new Notification('Task reminder',{body:task.name});notice.onclick=()=>{window.focus();go('tasks')};localStorage.setItem(key,'shown')}}
@@ -63,7 +64,7 @@ async function productivityTick(){
  catch(e){const status=$('#mail-sync-status');if(status)status.textContent='Automatic check: '+e.message}
  finally{productivityRunning=false;scheduleProductivity(busy?1500:60000)}
 }
-const productivityShell=shell;shell=function(){productivityShell();const button=document.createElement('button');button.id='reminder-toggle';button.textContent='Reminders'+(dueReminders.length?' ('+dueReminders.length+')':'');button.onclick=reminderView;$('header').insertBefore(button,$('.profile-wrap'));const cleanup=document.createElement('button');cleanup.textContent='◇ Data cleanup';cleanup.onclick=()=>go('cleanup');$('#nav').append(cleanup)};
+const productivityShell=shell;shell=function(){productivityShell();const button=document.createElement('button');button.id='reminder-toggle';button.textContent='Reminders'+(dueReminders.length?' ('+dueReminders.length+')':'');button.onclick=reminderView;$('header').insertBefore(button,$('.profile-wrap'));};
 $('#modal').addEventListener('close',()=>{if(productivityPending)scheduleProductivity(100)});
 scheduleProductivity(2000);
 

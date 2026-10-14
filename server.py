@@ -12,12 +12,15 @@ from auth import OIDC
 from desktop_bridge import DesktopBridge
 import sso_config
 import record_forms
+import navigation_preferences
 import dashboard_preferences
 import crm_tools
 import workspace_tools
 import phone_numbers
 import enrichment
+from enrichment_service import EnrichmentService, linkedin_url
 import automation
+import followups
 from app_version import release_info
 from updates import Updates
 from calendar_service import CalendarService
@@ -40,6 +43,7 @@ def connect():
 
 
 MAIL = MailService(connect)
+ENRICHMENT = EnrichmentService(lambda:connect(), MAIL.cipher)
 CALENDAR = CalendarService(connect)
 RECOVERY = Recovery(connect,lambda:DB)
 
@@ -51,12 +55,15 @@ def initialize():
         CREATE TABLE IF NOT EXISTS activities (id TEXT PRIMARY KEY, record_id TEXT NOT NULL REFERENCES records(id) ON DELETE CASCADE, body TEXT NOT NULL, created TEXT NOT NULL);
         ''')
         MAIL.initialize(db)
+        navigation_preferences.initialize(db)
         dashboard_preferences.initialize(db)
         crm_tools.initialize(db)
         workspace_tools.initialize(db)
         CALENDAR.initialize(db)
         enrichment.initialize(db)
+        ENRICHMENT.initialize(db)
         automation.initialize(db)
+        followups.initialize(db)
         if not db.execute('SELECT 1 FROM settings').fetchone():
             kinds = [
                 ('contacts', 'Contacts', [{'key': 'email', 'label': 'Email', 'type': 'email'}, {'key': 'phone', 'label': 'Phone', 'type': 'text'}]),
@@ -121,6 +128,8 @@ def validate_settings(data, previous, records):
 
 
 def validate_record(db, kind, body):
+    if isinstance(body,dict) and kind in ('contacts','companies') and body.get('linkedin_url'):
+        body['linkedin_url']=linkedin_url(body['linkedin_url'],kind)
     settings = load_settings(db)
     typ = next((t for t in settings['types'] if t['id'] == kind), None)
     if not typ or not isinstance(body, dict) or not str(body.get('name', '')).strip():
@@ -201,8 +210,22 @@ class Handler(BaseHTTPRequestHandler):
             raise MailError('Sign in again before connecting email.')
         return json.dumps([AUTH.issuer, user['subject']]) if user else 'local-operator'
 
+    def tracking_pixel(self,head=False):
+        from mail_tracking import PIXEL
+        token=urlparse(self.path).path.removeprefix('/email-open/').removesuffix('.gif') if hasattr(str,'removeprefix') else urlparse(self.path).path[len('/email-open/'):-4]
+        if not head:
+            try:MAIL.tracking.hit(token)
+            except Exception:pass # Return the same image even if storage is temporarily unavailable.
+        self.send_response(200);self.send_header('Content-Type','image/gif');self.send_header('Content-Length',str(len(PIXEL)));self.send_header('Cache-Control','no-store, max-age=0');self.send_header('Referrer-Policy','no-referrer');self.end_headers()
+        if not head:self.wfile.write(PIXEL)
+
+    def do_HEAD(self):
+        if urlparse(self.path).path.startswith('/email-open/'):return self.tracking_pixel(True)
+        self.send_error(405)
+
     def do_GET(self):
         path = urlparse(self.path).path
+        if path.startswith('/email-open/'):return self.tracking_pixel()
         if path == '/api/desktop/health':
             if not DESKTOP.trusted(self.headers):
                 return self.reply(403, {'error': 'Desktop access required'})
@@ -270,6 +293,15 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith('/api/'):
                 return self.reply(401, {'error': 'Sign-in required'})
             return self.redirect('/login')
+        if path=='/api/templates':
+            with connect() as db:return self.reply(200,followups.templates(db,self.mail_owner(),self.sso_admin()))
+        if path=='/api/tracking/opens':return self.reply(200,MAIL.tracking.visible_opens(self.mail_owner()))
+        if path=='/api/tracking':return self.reply(200,MAIL.tracking.status(self.mail_owner(),self.sso_admin()))
+        if path in ('/api/enrichment/status','/api/enrichment/history'):
+            try:
+                result=ENRICHMENT.status(self.sso_admin()) if path.endswith('/status') else ENRICHMENT.history(self.mail_owner(),parse_qs(urlparse(self.path).query).get('record_id',[''])[0],self.sso_admin())
+                return self.reply(200,result)
+            except ValueError as error:return self.reply(400,{'error':str(error)})
         if path=='/api/calendar':
             return self.reply(200,CALENDAR.status(self.mail_owner()))
         if path=='/api/automation':
@@ -298,8 +330,9 @@ class Handler(BaseHTTPRequestHandler):
             with connect() as db:
                 records = [dict(json.loads(r['body']), id=r['id'], kind=r['kind'], updated=r['updated']) for r in db.execute('SELECT * FROM records ORDER BY updated DESC')]
                 activities = [dict(json.loads(r['body']), id=r['id'], record_id=r['record_id'], created=r['created']) for r in db.execute('SELECT * FROM activities ORDER BY created DESC')]
-                return self.reply(200, {'release': release_info(), 'settings': load_settings(db), 'records': records, 'activities': activities, 'dashboard': dashboard_preferences.load(db,self.mail_owner()), 'views': workspace_tools.views(db,self.mail_owner())['views'], 'phone': {'countries':phone_numbers.countries()}})
-        file = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/login': 'login.html', '/login.js': 'login.js', '/mail.js': 'mail.js', '/create.js': 'create.js', '/productivity.js': 'productivity.js', '/workspace.js':'workspace.js', '/features.js':'features.js', '/phone.js':'phone.js', '/updates.js':'updates.js', '/dashboard.js':'dashboard.js'}.get(path)
+                MAIL.tracking.decorate(db,activities)
+                return self.reply(200, {'release': release_info(), 'settings': load_settings(db), 'records': records, 'activities': activities, 'navigation': navigation_preferences.load(db,self.mail_owner(),load_settings(db)), 'dashboard': dashboard_preferences.load(db,self.mail_owner()), 'views': workspace_tools.views(db,self.mail_owner())['views'], 'phone': {'countries':phone_numbers.countries()}})
+        file = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/login': 'login.html', '/login.js': 'login.js', '/mail.js': 'mail.js', '/create.js': 'create.js', '/productivity.js': 'productivity.js', '/workspace.js':'workspace.js', '/features.js':'features.js', '/phone.js':'phone.js', '/updates.js':'updates.js', '/dashboard.js':'dashboard.js', '/navigation.js':'navigation.js', '/enrichment.js':'enrichment.js', '/tracking.js':'tracking.js', '/followups.js':'followups.js'}.get(path)
         if path.startswith('/assets/brand/'):
             candidate = (ROOT / 'web' / path.lstrip('/')).resolve()
             asset_root = (ROOT / 'web/assets/brand').resolve()
@@ -347,6 +380,11 @@ class Handler(BaseHTTPRequestHandler):
             data = json.loads(self.rfile.read(length))
             path = urlparse(self.path).path
             now = datetime.now(timezone.utc).isoformat()
+            if path=='/api/navigation/preferences':
+                if self.headers.get('Origin') != (AUTH.origin if AUTH.enabled else 'http://' + self.headers.get('Host','')):
+                    return self.reply(403,{'error':'Same-origin browser request required.'})
+                with connect() as db:
+                    return self.reply(200,navigation_preferences.save(db,self.mail_owner(),load_settings(db),data))
             if path=='/api/dashboard/preferences':
                 if self.headers.get('Origin') != (AUTH.origin if AUTH.enabled else 'http://' + self.headers.get('Host','')):
                     return self.reply(403,{'error':'Same-origin browser request required.'})
@@ -355,6 +393,26 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/phone':
                 if not isinstance(data,dict):raise ValueError('Phone request must be an object.')
                 return self.reply(200,phone_numbers.format_phone(data.get('value',''),data.get('country') or phone_numbers.DEFAULT_COUNTRY,data.get('typing') is True))
+            if path in ('/api/followups/create','/api/followups/reschedule','/api/templates/save','/api/templates/render'):
+                if self.headers.get('Origin') != (AUTH.origin if AUTH.enabled else 'http://' + self.headers.get('Host','')):return self.reply(403,{'error':'Same-origin browser request required.'})
+                if not isinstance(data,dict):raise ValueError('Invalid request.')
+                owner=self.mail_owner();user=AUTH.user(self.headers) if AUTH.enabled else {}
+                actor=MAIL.profile(owner).get('name') or (user or {}).get('name') or 'Local operator'
+                with connect() as db:
+                    if path.endswith('/create'):result=followups.schedule(db,owner,actor,data,validate_record,MAIL)
+                    elif path.endswith('/reschedule'):result=followups.reschedule(db,data,validate_record)
+                    elif path.endswith('/save'):result=followups.save_template(db,owner,data,self.sso_admin(),__import__('mail_service').safe_email_html)
+                    else:result=followups.render_template(db,owner,actor,data,__import__('mail_service').safe_email_html)
+                return self.reply(200,result)
+            if path.startswith('/api/tracking/'):
+                if self.headers.get('Origin') != (AUTH.origin if AUTH.enabled else 'http://' + self.headers.get('Host','')):return self.reply(403,{'error':'Same-origin browser request required.'})
+                if not isinstance(data,dict):raise ValueError('Invalid tracking request.')
+                if path=='/api/tracking/configure':
+                    if not self.sso_admin():return self.reply(403,{'error':'Administrator access required.'})
+                    result=MAIL.tracking.configure(data)
+                elif path=='/api/tracking/preference':result=MAIL.tracking.preference(self.mail_owner(),data)
+                else:raise ValueError('Unknown tracking action.')
+                return self.reply(200,result)
             if path.startswith(('/api/calendar/','/api/backup/','/api/automation/','/api/enrichment/')):
                 if self.headers.get('Origin') != (AUTH.origin if AUTH.enabled else 'http://' + self.headers.get('Host','')):
                     return self.reply(403,{'error':'Same-origin browser request required.'})
@@ -379,6 +437,17 @@ class Handler(BaseHTTPRequestHandler):
                         with MAIL.lock,CALENDAR.lock:
                             result=RECOVERY.apply(owner,data);MAIL.imports.clear();CALENDAR.imports.clear()
                     else:raise ValueError('Unknown backup action.')
+                    return self.reply(200,result)
+                if path.startswith('/api/enrichment/') and action not in ('preview','apply'):
+                    if action in ('configure','verify') and not self.sso_admin():return self.reply(403,{'error':'Administrator access required.'})
+                    actor=MAIL.profile(owner).get('name') or 'Workspace user'
+                    if action=='configure':result=ENRICHMENT.configure(data)
+                    elif action=='verify':result=ENRICHMENT.verify()
+                    elif action=='lookup':result=ENRICHMENT.lookup(owner,data,validate_record)
+                    elif action=='csv-preview':result=ENRICHMENT.csv_preview(owner,data,validate_record)
+                    elif action=='commit':result=ENRICHMENT.apply(owner,actor,data,validate_record)
+                    elif action=='undo':result=ENRICHMENT.undo(owner,actor,data,validate_record,self.sso_admin())
+                    else:raise ValueError('Unknown enrichment action.')
                     return self.reply(200,result)
                 with connect() as db:
                     if path.startswith('/api/enrichment/'):
