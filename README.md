@@ -6,7 +6,7 @@ A free, MIT-licensed, configurable CRM foundation.
 
 ## Start your company's private web workspace
 
-**[Web v0.2.0-beta.4 release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/web-v0.2.0-beta.4)** · **[Getting started](GETTING_STARTED.md)** · **[Features and beta limits](WEB_RELEASE.md)**
+**[Web v0.2.0-beta.5 release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/web-v0.2.0-beta.5)** · **[Getting started](GETTING_STARTED.md)** · **[Features and beta limits](WEB_RELEASE.md)**
 
 Each company runs its own installation and database, on its own domain or hosting-provider address. The software is free; hosting may cost money. This is a public beta, with Google sign-in, team invitations and separate Gmail/Calendar connections.
 
@@ -27,14 +27,26 @@ Your first deployment opens workspace setup. Create the administrator using its 
 
 ## Screenshots
 
-These screenshots show the **v0.1.5 Mac preview**, using only clearly labeled fictional sample records and `.example` email addresses. Navigation also includes sections marked as planned within the app.
+These screenshots show the **v0.2.0-beta.5 private web edition**, using an isolated demonstration workspace with clearly labeled fictional sample records and `.example` email addresses. Navigation also includes sections marked as planned within the app.
 
-**Dashboard — record counts, pipeline value and recent activity.**
+**Daily desk — tasks, reminders and your calendar agenda.**
 
 ![SpRocket CRM dashboard with fictional sample data](docs/screenshots/dashboard.png)
 
 <details>
-<summary>Deal board, contact record and personal inbox</summary>
+<summary>Sales overview, relationship hub, deal board, contact record, inbox and notifications</summary>
+
+### Sales overview
+
+Pipeline health, deal value and opportunities that need attention.
+
+![SpRocket web sales overview with fictional sample deals](docs/screenshots/dashboard-sales.png)
+
+### Relationship hub
+
+Contact follow-ups and conversations, separate from sales reporting.
+
+![SpRocket web relationship hub with fictional sample contacts](docs/screenshots/dashboard-relationships.png)
 
 ### Deal board
 
@@ -44,7 +56,7 @@ Drag deals between stages and see total and weighted values.
 
 ### Contact record
 
-Contact details, email activity and related companies, deals and tasks.
+Contact details with grouped actions, inline field editing, email activity and related records.
 
 ![SpRocket CRM contact record with fictional email activity](docs/screenshots/contact-record.png)
 
@@ -53,6 +65,12 @@ Contact details, email activity and related companies, deals and tasks.
 Cached sample email with CRM matching and follow-up controls. This demonstration inbox contains no real mailbox credentials or messages.
 
 ![SpRocket CRM personal inbox showing a fictional sample email](docs/screenshots/inbox.png)
+
+### Notifications
+
+Personal alerts for email opens, new synced mail and due tasks, with unread counts and preferences.
+
+![SpRocket web notification center with fictional sample alerts](docs/screenshots/notifications.png)
 
 </details>
 
@@ -177,7 +195,7 @@ Your top-right Profile & preferences menu supports editing your display name, jo
 - **Inbox → Import email** keeps the initial date-range preview. Enable automatic sync after import, or enable/pause it from the inbox toolbar. Checks run roughly once a minute while the CRM window is open.
 - **Data cleanup** lists exact email/domain duplicates, imported records and previously imported personal-domain companies. Review field differences and select the primary record before merging. Primary populated fields win; missing fields, relationships and activities are preserved. Merging removes the secondary record and cannot be undone.
 - Common personal email domains such as Gmail and Outlook create individual contacts without new domain companies. Existing records are preserved for review.
-- **Tasks** has open/completed filters and completion buttons. Repeating tasks advance on completion rather than generating duplicate task records. **Reminders** in the top bar supports snoozing and dismissing; desktop notifications require user permission.
+- **Tasks** has open/completed filters and completion buttons. Repeating tasks advance on completion rather than generating duplicate task records. **Notifications → Task reminder controls** supports snoozing and dismissing; optional desktop alerts require user permission. See [Notifications](NOTIFICATIONS.md).
 - **Inbox → Sender & signature** supports rich text / HTML, links and uploaded images under 150 KB. Compose and reply use the same formatting editor. Plain-text signature mode remains available.
 
 See [Productivity guide](PRODUCTIVITY.md) for behavior and testing.
@@ -227,3 +245,7 @@ Opt-in tracking for messages sent from the hosted CRM, with **Opened N times**, 
 ### Follow-ups and templates
 
 A focused My tasks desk, quick scheduling from contacts/deals/emails, due-time overdue labels, safe rescheduling and personal/workspace email templates with reviewed personalization. See [Follow-ups and templates](FOLLOWUPS.md). Included in web v0.2.0-beta.4.
+
+## Notification center development update
+
+The development source adds personal alerts for tracked email opens, new incoming synced mail and due task reminders, with persistent unread state, category preferences and optional desktop alerts while the app is open. See [Notifications](NOTIFICATIONS.md). Included in web v0.2.0-beta.5.

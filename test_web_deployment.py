@@ -14,7 +14,7 @@ class WebDeployment(unittest.TestCase):
     def tearDownClass(cls):cls.env.stop()
     def setUp(self):
         with self.web.server.connect() as db:
-            db.execute('TRUNCATE followup_requests,email_templates,mail_tracking_config,mail_tracking_defaults,mail_tracking_events,mail_tracking,enrichment_config,provider_enrichment_jobs,enrichment_receipts,enrichment_usage,navigation_preferences,dashboard_preferences,web_users,web_invites,web_attempts,web_google_pending,update_status,records,user_profiles,mail_accounts,calendar_accounts,calendar_logs,web_provider_config,saved_views CASCADE')
+            db.execute('TRUNCATE notifications,notification_preferences,followup_requests,email_templates,mail_tracking_config,mail_tracking_defaults,mail_tracking_events,mail_tracking,enrichment_config,provider_enrichment_jobs,enrichment_receipts,enrichment_usage,navigation_preferences,dashboard_preferences,web_users,web_invites,web_attempts,web_google_pending,update_status,records,user_profiles,mail_accounts,calendar_accounts,calendar_logs,web_provider_config,saved_views CASCADE')
     def request(self,path,data=None,cookie='',host='127.0.0.1:18766',origin='http://127.0.0.1:18766'):
         raw=json.dumps(data).encode() if data is not None else b''
         env=dict(PATH_INFO=path,REQUEST_METHOD='POST' if data is not None else 'GET',HTTP_HOST=host,HTTP_ORIGIN=origin,HTTP_COOKIE=cookie,CONTENT_TYPE='application/json',CONTENT_LENGTH=str(len(raw)),REMOTE_ADDR='127.0.0.1',**{'wsgi.input':io.BytesIO(raw)})
@@ -250,7 +250,7 @@ class WebDeployment(unittest.TestCase):
         with patch('updates.fetch_releases',return_value=[dict(tag_name='web-v0.2.0-beta.99',prerelease=True),dict(tag_name='v99.0.0')]):
             result=self.request('/api/updates/check',dict(channel='beta'),admin)
         self.assertEqual(result['status'],200);self.assertEqual(result['body']['installed']['edition'],'web');self.assertEqual(result['body']['latest']['version'],'0.2.0-beta.99')
-        self.assertEqual(self.request('/api/state',cookie=admin)['body']['release']['version'],'0.2.0-beta.4')
+        self.assertEqual(self.request('/api/state',cookie=admin)['body']['release']['version'],'0.2.0-beta.5')
     def test_web_schema_guard_blocks_newer_database(self):
         from web_migrations import migrate
         with self.web.server.connect() as db:db.execute('UPDATE web_schema_version SET version=2 WHERE id=1')
@@ -311,3 +311,23 @@ class WebDeployment(unittest.TestCase):
         preview=self.request('/api/templates/render',dict(id=template['body']['id'],email='sample@example.test'),admin)
         self.assertEqual(preview['body']['body'],'From SAMPLE — Admin')
         self.assertEqual(self.request('/api/templates/save',{},admin,origin='https://evil.example')['status'],403)
+
+    def test_personal_notifications_and_preferences_postgres(self):
+        admin=self.setup_admin()
+        self.assertEqual(self.request('/api/notifications')['status'],401)
+        first=self.request('/api/notifications?offset=360',cookie=admin)
+        self.assertEqual(first['status'],200)
+        self.assertEqual(first['body']['unread'],0)
+        owner=json.dumps([self.web.accounts.issuer,self.request('/api/auth',cookie=admin)['body']['user']['subject']])
+        import notifications
+        with self.web.server.connect() as db:
+            notifications.emit(db,owner,'sample-event','incoming_email','New email','SAMPLE subject',__import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat())
+            notifications.emit(db,'other-user','other-event','incoming_email','New email','PRIVATE other subject',__import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat())
+        result=self.request('/api/notifications',cookie=admin)['body']
+        self.assertEqual(result['unread'],1)
+        self.assertNotIn('PRIVATE',json.dumps(result))
+        self.assertEqual(self.request('/api/notifications',{'action':'read','ids':['sample-event','other-event']},admin)['status'],200)
+        self.assertEqual(self.request('/api/notifications',cookie=admin)['body']['unread'],0)
+        with self.web.server.connect() as db:self.assertEqual(db.execute("SELECT read_at FROM notifications WHERE id='other-event'").fetchone()[0],'')
+        self.assertEqual(self.request('/api/notifications',{'action':'preferences','preferences':notifications.DEFAULTS},admin,origin='https://evil.example')['status'],403)
+        self.assertEqual(self.request('/api/notifications?offset=9999',cookie=admin)['status'],400)

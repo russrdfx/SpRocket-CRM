@@ -1,6 +1,8 @@
 """On-demand, edition-specific public release checks. No hosting credentials needed."""
 import json,re,time
 from urllib.request import Request,urlopen
+from urllib.error import HTTPError,URLError
+from socket import timeout as SocketTimeout
 from app_version import release_info
 REPO='russrdfx/SpRocket-CRM'
 VERSION=re.compile(r'^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$')
@@ -19,6 +21,7 @@ def release_tag(tag,edition):
 def select_release(releases,edition,channel):
     selected=[]
     for release in releases:
+        if not isinstance(release,dict):continue
         value=release_tag(release.get('tag_name'),edition)
         if not value or release.get('draft'):continue
         if channel=='stable' and (release.get('prerelease') or '-' in value):continue
@@ -45,15 +48,25 @@ class Updates:
         stored=json.loads(row[0]) if row else {}
         if stored.get('edition')!=edition:stored={}
         latest=stored.get('latest');available=bool(latest and version_key(latest['version'])>version_key(installed['version']))
-        return dict(installed=installed,channel=stored.get('channel',channel),checked_at=stored.get('checked_at'),latest=latest,error=stored.get('error',''),update_available=available)
+        return dict(installed=installed,channel=stored.get('channel',channel),checked_at=stored.get('checked_at'),last_successful_at=stored.get('last_successful_at'),latest=latest,error=stored.get('error',''),update_available=available)
     def check(self,channel):
         if channel not in ('stable','beta'):raise ValueError('Choose Stable or Beta.')
         edition=release_info()['edition']
         if edition=='source':raise ValueError('This is a source checkout. Choose a packaged desktop or web release for deployment.')
         previous=self.status()
-        if previous.get('checked_at') and previous['channel']==channel and time.time()-previous['checked_at']<60:return previous
+        if previous.get('checked_at') and not previous.get('error') and previous['channel']==channel and time.time()-previous['checked_at']<60:return previous
         body=dict(edition=edition,channel=channel,checked_at=time.time(),latest=None,error='')
-        try:body['latest']=select_release(fetch_releases(),edition,channel)
-        except Exception:body['error']='Release check failed. Try again later. Your installed version is unchanged.'
+        try:
+            body['latest']=select_release(fetch_releases(),edition,channel)
+            body['last_successful_at']=body['checked_at']
+        except Exception as error:
+            if previous['channel']==channel:
+                body['latest']=previous.get('latest')
+                body['last_successful_at']=previous.get('last_successful_at')
+            if isinstance(error,HTTPError) and error.code in (403,429):
+                body['error']='GitHub temporarily limited release checks. Try again in a few minutes or open the release page. Your installed version is unchanged.'
+            elif isinstance(error,(URLError,SocketTimeout,TimeoutError,OSError)):
+                body['error']='Could not reach GitHub. Retry the check or open the release page. Your installed version is unchanged.'
+            else:body['error']='Could not read the release response. Retry the check or open the release page. Your installed version is unchanged.'
         with self.connect() as db:db.execute('INSERT INTO update_status VALUES (1,?) ON CONFLICT(id) DO UPDATE SET body=excluded.body',(json.dumps(body),))
         return self.status()

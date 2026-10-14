@@ -1,4 +1,4 @@
-# SpRocket CRM Web v0.2.0-beta.4
+# SpRocket CRM Web v0.2.0-beta.5
 
 Released October 13, 2026. This is the private web release; the separately packaged Mac preview remains v0.1.8.
 
@@ -37,3 +37,7 @@ Apollo live lookups await an API-enabled account. ZoomInfo currently supports re
 ## Verification
 
 168 Python regression/integration checks, including disposable PostgreSQL coverage, and seven JavaScript suites pass. Browser checks use fictional SAMPLE data and cover navigation, enrichment review/save/undo, tracking expansion, follow-up scheduling/rescheduling/completion and template preview/application. Tests send no real mail. Production updates use a fresh backup whose isolated restore and encrypted Google configuration are verified before deploying.
+
+## New in beta.5
+
+A personal notification center covers tracked email opens, incoming synced email and due task reminders, with saved unread state/preferences and optional desktop alerts. Contact and deal cards have grouped, responsive actions. Release-check failures preserve the last successful result and allow immediate retry. GitHub documentation screenshots now show the web edition. See [Notifications](NOTIFICATIONS.md) and [Updates](UPDATES.md).

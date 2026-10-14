@@ -21,6 +21,7 @@ import enrichment
 from enrichment_service import EnrichmentService, linkedin_url
 import automation
 import followups
+import notifications
 from app_version import release_info
 from updates import Updates
 from calendar_service import CalendarService
@@ -64,6 +65,7 @@ def initialize():
         ENRICHMENT.initialize(db)
         automation.initialize(db)
         followups.initialize(db)
+        notifications.initialize(db)
         if not db.execute('SELECT 1 FROM settings').fetchone():
             kinds = [
                 ('contacts', 'Contacts', [{'key': 'email', 'label': 'Email', 'type': 'email'}, {'key': 'phone', 'label': 'Phone', 'type': 'text'}]),
@@ -293,6 +295,14 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith('/api/'):
                 return self.reply(401, {'error': 'Sign-in required'})
             return self.redirect('/login')
+        if path=='/api/notifications':
+            try:
+                owner=self.mail_owner();profile=MAIL.profile(owner);identity=AUTH.user(self.headers) if AUTH.enabled else {}
+                with connect() as db:
+                    aliases=[profile.get('name'),(identity or {}).get('name'),(identity or {}).get('email'),'Local operator' if owner=='local-operator' else owner]+[r[0] for r in db.execute('SELECT email FROM mail_accounts WHERE owner=?',(owner,))]
+                    offset=int(parse_qs(urlparse(self.path).query).get('offset',['0'])[0])
+                    return self.reply(200,notifications.feed(db,owner,aliases,offset))
+            except (ValueError,TypeError) as error:return self.reply(400,{'error':str(error)})
         if path=='/api/templates':
             with connect() as db:return self.reply(200,followups.templates(db,self.mail_owner(),self.sso_admin()))
         if path=='/api/tracking/opens':return self.reply(200,MAIL.tracking.visible_opens(self.mail_owner()))
@@ -332,7 +342,7 @@ class Handler(BaseHTTPRequestHandler):
                 activities = [dict(json.loads(r['body']), id=r['id'], record_id=r['record_id'], created=r['created']) for r in db.execute('SELECT * FROM activities ORDER BY created DESC')]
                 MAIL.tracking.decorate(db,activities)
                 return self.reply(200, {'release': release_info(), 'settings': load_settings(db), 'records': records, 'activities': activities, 'navigation': navigation_preferences.load(db,self.mail_owner(),load_settings(db)), 'dashboard': dashboard_preferences.load(db,self.mail_owner()), 'views': workspace_tools.views(db,self.mail_owner())['views'], 'phone': {'countries':phone_numbers.countries()}})
-        file = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/login': 'login.html', '/login.js': 'login.js', '/mail.js': 'mail.js', '/create.js': 'create.js', '/productivity.js': 'productivity.js', '/workspace.js':'workspace.js', '/features.js':'features.js', '/phone.js':'phone.js', '/updates.js':'updates.js', '/dashboard.js':'dashboard.js', '/navigation.js':'navigation.js', '/enrichment.js':'enrichment.js', '/tracking.js':'tracking.js', '/followups.js':'followups.js'}.get(path)
+        file = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/login': 'login.html', '/login.js': 'login.js', '/mail.js': 'mail.js', '/create.js': 'create.js', '/productivity.js': 'productivity.js', '/workspace.js':'workspace.js', '/features.js':'features.js', '/phone.js':'phone.js', '/updates.js':'updates.js', '/dashboard.js':'dashboard.js', '/navigation.js':'navigation.js', '/enrichment.js':'enrichment.js', '/tracking.js':'tracking.js', '/followups.js':'followups.js', '/notifications.js':'notifications.js'}.get(path)
         if path.startswith('/assets/brand/'):
             candidate = (ROOT / 'web' / path.lstrip('/')).resolve()
             asset_root = (ROOT / 'web/assets/brand').resolve()
@@ -390,6 +400,9 @@ class Handler(BaseHTTPRequestHandler):
                     return self.reply(403,{'error':'Same-origin browser request required.'})
                 with connect() as db:
                     return self.reply(200,dashboard_preferences.save(db,self.mail_owner(),data))
+            if path=='/api/notifications':
+                if self.headers.get('Origin') != (AUTH.origin if AUTH.enabled else 'http://' + self.headers.get('Host','')):return self.reply(403,{'error':'Same-origin browser request required.'})
+                with connect() as db:return self.reply(200,notifications.save(db,self.mail_owner(),data))
             if path=='/api/phone':
                 if not isinstance(data,dict):raise ValueError('Phone request must be an object.')
                 return self.reply(200,phone_numbers.format_phone(data.get('value',''),data.get('country') or phone_numbers.DEFAULT_COUNTRY,data.get('typing') is True))

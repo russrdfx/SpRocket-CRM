@@ -83,3 +83,7 @@ Implemented locally: hosted opt-in tracking, administrator switch, per-inbox def
 ## Follow-up workflow development update
 
 Implemented locally: personal task desk with due-time overdue labels and owner scopes; contact/deal/email scheduling; task rescheduling and guarded completion; reusable personal/workspace templates, supported placeholders and composer preview/application. Released in web v0.2.0-beta.4. Deal forecasting and guided company onboarding remain subsequent priorities.
+
+## Notifications development update
+
+Implemented locally: a persistent personal notification center for email opens, new synced incoming mail and due tasks; unread badges; direct context links; per-category preferences; and opt-in desktop alerts. Closed-app push, assignment alerts and calendar reminders remain future work. See [NOTIFICATIONS.md](NOTIFICATIONS.md).

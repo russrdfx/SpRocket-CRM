@@ -58,3 +58,45 @@ aside{display:flex;flex-direction:column}.brand{flex-shrink:0}#nav{min-height:0;
 .follow-dialog{width:min(740px,calc(100vw - 32px));max-width:740px;max-height:90vh;overflow:auto;padding:24px;box-sizing:border-box}.follow-dialog label{display:block;margin:12px 0}.follow-dialog input:not([type=checkbox]),.follow-dialog select,.follow-dialog textarea{width:100%;box-sizing:border-box}.follow-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}.follow-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:20px 0}.follow-tabs button[aria-selected=true]{background:#1265ce;color:white}.follow-tabs span{opacity:.8;margin-left:6px}.follow-task-row{display:flex;justify-content:space-between;gap:16px;border-bottom:1px solid #e2e9f0;padding:20px 0}.follow-task-row:last-child{border:0}.follow-task-title{border:0;padding:0;color:#1265ce;background:none;font-weight:700;text-align:left}.follow-due{border-radius:12px;padding:3px 8px;background:#eef3f7;font-size:12px}.follow-due.overdue{color:#a64218;background:#fff0e6}.follow-links{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.follow-links button{font-size:12px;padding:4px 8px}.compose-templates{background:#f5f8fb;border:1px solid #dce5ee;border-radius:8px;padding:16px;margin:16px 0}.compose-templates label{display:block}.compose-templates select{width:100%;margin:8px 0}.compose-templates iframe{min-height:160px}@media(max-width:600px){.follow-grid{grid-template-columns:1fr}.follow-task-row{flex-direction:column}.follow-task-row .actions{flex-wrap:wrap}}
 
 .follow-task-row > .actions{align-self:center;align-items:center;flex:none}
+
+/* Record cards share one action layout across feature extensions. */
+.record-summary h2{display:flex;align-items:flex-start;gap:8px;overflow-wrap:anywhere;margin:16px 0}
+.record-summary .profile-avatar{flex:none}
+.record-log-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin:20px 0 12px}
+.record-log-actions button{padding:9px 2px;font-size:12px;min-width:0}
+.record-main-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;border-top:1px solid #e2e8ef;padding-top:12px}
+.record-main-actions>button,.record-main-actions .enrich-record-actions>button{width:100%;min-width:0;padding:10px 6px;font-size:12px;white-space:normal}
+.record-main-actions .enrich-record-actions{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0;padding-top:12px;border-top:1px solid #e2e8ef}
+.record-main-actions>.record-follow-action,.record-main-actions>p{grid-column:1/-1;margin:0}
+.record-main-actions>.record-follow-action{background:#f3f7fc}
+.deal-detail>div{min-width:0}
+.deal-detail .heading{flex-wrap:wrap;gap:8px}
+.deal-detail .settings-tabs{display:flex;flex-wrap:wrap}
+@media(max-width:1100px){.record-log-actions{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* Personal notification center */
+#notification-toggle{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.notification-badge{background:#1268d5;color:white;border-radius:12px;padding:2px 6px;font-size:11px}
+.notification-panel{position:fixed;right:20px;top:66px;width:420px;max-width:calc(100vw - 32px);max-height:calc(100vh - 86px);overflow:auto;background:white;color:#18304d;border:1px solid #d7e1ed;border-radius:14px;box-shadow:0 12px 40px #102a4340;z-index:60}
+.notification-panel[hidden]{display:none}
+.notification-heading{display:flex;justify-content:space-between;align-items:center;padding:16px 18px}
+.notification-heading h2{margin:0;font-size:20px}
+.notification-heading button{border:0;font-size:22px;padding:3px 8px;background:transparent}
+.notification-toolbar{display:flex;gap:8px;padding:0 18px 16px;border-bottom:1px solid #e3eaf2}
+.notification-toolbar button{font-size:12px;padding:8px}
+.notification-item{display:flex;align-items:center;border-bottom:1px solid #e3eaf2;padding:14px 18px;gap:8px}
+.notification-item.unread{background:#f0f6ff}
+.notification-open{display:flex;flex-direction:column;align-items:flex-start;gap:5px;flex:1;min-width:0;border:0;background:transparent;text-align:left;padding:0;overflow-wrap:anywhere;color:#18304d}
+.notification-open span,.notification-open strong{max-width:100%}
+.notification-kind{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#536b83}
+.notification-open time{font-size:11px;color:#64778d}
+.notification-read{border:0;background:transparent;color:#1268d5;padding:10px}
+.notification-footer{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:16px 18px}
+.notification-footer small{font-size:11px;color:#64778d}
+.notification-empty{padding:24px 18px}
+.notification-panel>.error{padding:0 18px}
+.notification-choice{display:flex;align-items:flex-start;gap:12px;margin:18px 0;font-weight:normal}
+.notification-choice input{width:auto;margin:3px 0}
+.notification-choice small{display:block;font-size:13px;color:#60758c;line-height:1.5;margin-top:5px}
+@media(max-width:900px){#notification-toggle>span:not(.notification-badge){display:none}.notification-panel{right:12px}}
+
+.notification-panel{padding:0}

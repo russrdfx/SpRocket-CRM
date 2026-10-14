@@ -28,7 +28,7 @@ Use a trusted copy of `deploy/upgrade.py` from this release with `--root` pointi
 Preview first:
 
 ```sh
-python3 deploy/upgrade.py --root /srv/sprocket --version web-v0.2.0-beta.4
+python3 deploy/upgrade.py --root /srv/sprocket --version web-v0.2.0-beta.5
 ```
 
 For the first upgrade from the original web beta, which had no version metadata, also supply `--from-version 0.2.0-beta.1` after confirming that this is what you installed. Never use that option to bypass a known incompatible version.
@@ -36,7 +36,7 @@ For the first upgrade from the original web beta, which had no version metadata,
 Approve after reviewing the target:
 
 ```sh
-python3 deploy/upgrade.py --root /srv/sprocket --version web-v0.2.0-beta.4 --approve
+python3 deploy/upgrade.py --root /srv/sprocket --version web-v0.2.0-beta.5 --approve
 ```
 
 The tool:
@@ -75,3 +75,11 @@ Web v0.2.0-beta.3 added personalized Home dashboards, feedback drafts and a new-
 ## Web v0.2.0-beta.4
 
 Adds personal navigation, reviewed enrichment, opt-in hosted email-open tracking, contextual follow-ups and email templates. Upgrade in place after a verified backup. New tables and contact/company properties are additive; retired existing properties and customized pipelines are preserved. Provider credentials and the installation encryption key are retained. Email tracking starts disabled; Apollo requires an administrator-supplied API key. Neither is enabled automatically during upgrade. See [ENRICHMENT.md](ENRICHMENT.md), [EMAIL_TRACKING.md](EMAIL_TRACKING.md) and [FOLLOWUPS.md](FOLLOWUPS.md).
+
+## Web v0.2.0-beta.5
+
+Adds personal email-open, incoming-mail and task-reminder notifications, persistent unread state and preferences, and optional desktop alerts while the CRM is open. Contact/deal actions now use a consistent layout, and opening a new section resets its scroll position. README screenshots now show the private web edition using fictional data.
+
+Failed release checks can be retried immediately and preserve the last successful result for the selected channel. GitHub rate limits and network failures have clearer guidance and a direct release-page link. No update is installed automatically.
+
+The database additions are additive. Existing records, pipelines, custom fields, profiles, connected accounts and encryption keys are retained. Back up before deploying the beta.5 commit to the existing service; do not create a new workspace or database. See [Notifications](NOTIFICATIONS.md).

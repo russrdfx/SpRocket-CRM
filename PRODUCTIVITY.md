@@ -22,7 +22,7 @@ Create/edit tasks with a due date, local due time, reminder preference and optio
 
 **Reminders** in the top bar shows due reminders for your profile/identity or connected email owner labels, plus unassigned tasks. Due time defaults to 09:00 if omitted. Snooze hides an occurrence for 15 minutes; dismiss hides that occurrence. Changing its date/time/reminder preference makes a new occurrence. Reminder state is private to the sign-in identity (or shared local operator in demo mode). Workspace records remain shared.
 
-Desktop notifications are optional and require permission from **Reminders → Enable desktop notifications**. They are shown once per task occurrence per browser profile and identity. In-app reminders work without permission. All reminder checks require the CRM window to be open; minimized/background windows may be throttled by the browser or operating system. Owner names are assignment labels, so renaming a profile does not rewrite existing task owners.
+Desktop notifications are optional and require permission from **Notifications → Preferences → Enable browser notifications**. Enable **Show desktop alerts** and save preferences as well. Alerts are shown once per task occurrence per browser profile and identity. In-app reminders work without permission. All reminder checks require the CRM window to be open; minimized/background windows may be throttled by the browser or operating system. Owner names are assignment labels, so renaming a profile does not rewrite existing task owners.
 
 ## Validation
 
@@ -34,4 +34,4 @@ Open **Profile & preferences** in the top-right menu, or **Configuration → Gen
 
 ## Focused task desk and email templates
 
-The current local development adds My/Team/Unassigned tasks, overdue/today/upcoming views, context-linked follow-up scheduling, rescheduling with stale-edit protection, and personal/shared email templates. See [Follow-ups and templates](FOLLOWUPS.md). Reminder delivery still uses the existing foreground reminder system.
+The current local development adds My/Team/Unassigned tasks, overdue/today/upcoming views, context-linked follow-up scheduling, rescheduling with stale-edit protection, and personal/shared email templates. See [Follow-ups and templates](FOLLOWUPS.md). Reminder delivery now uses the personal [notification center](NOTIFICATIONS.md), with the existing snooze/dismiss controls.

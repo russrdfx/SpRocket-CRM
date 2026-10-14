@@ -1,4 +1,5 @@
 """Personal Google/Microsoft mail adapters, encrypted tokens and bounded manual sync."""
+import notifications
 import base64
 import hashlib
 import hmac
@@ -154,6 +155,7 @@ class MailService:
         self.lock = threading.RLock()
 
     def initialize(self, db):
+        notifications.initialize(db)
         db.executescript('''
         CREATE TABLE IF NOT EXISTS user_profiles (owner TEXT PRIMARY KEY, body TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS mail_sender_names (account_id TEXT PRIMARY KEY REFERENCES mail_accounts(id) ON DELETE CASCADE, override_name TEXT NOT NULL DEFAULT '', provider_name TEXT NOT NULL DEFAULT '');
@@ -508,6 +510,7 @@ class MailService:
                     db.execute('INSERT INTO mail_messages VALUES(?,?,?,?) ON CONFLICT(account_id,provider_id) DO UPDATE SET body=excluded.body', (str(uuid.uuid4()),ident,m['provider_id'],json.dumps(m)))
                     ident_row = db.execute('SELECT id FROM mail_messages WHERE account_id=? AND provider_id=?',(ident,m['provider_id'])).fetchone()
                     m['id'] = ident_row[0]
+                    if not previous:notifications.incoming(db,owner,m)
                     c,co = self.ensure_correspondents(db,m,account)
                     contacts_created += c; companies_created += co
                     logged += self.log_message(db,m)

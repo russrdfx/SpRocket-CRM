@@ -78,3 +78,16 @@ class UpdateTests(unittest.TestCase):
                 self.assertFalse(any('down' in cmd or '--volumes' in cmd for cmd in calls))
                 self.assertLess(next(i for i,cmd in enumerate(calls) if 'build' in cmd),next(i for i,cmd in enumerate(calls) if 'stop' in cmd))
                 if failure!='none':self.assertEqual(json.loads((root/'.updates/rollback.json').read_text())['services']['app']['image'],'sha256:previous')
+
+    def test_failed_check_preserves_success_and_allows_immediate_retry(self):
+        from urllib.error import HTTPError
+        with tempfile.TemporaryDirectory() as folder:
+            checker=updates.Updates(lambda:sqlite3.connect(folder+'/status.db'));checker.initialize()
+            release=dict(tag_name='web-v0.2.0-beta.5',prerelease=True)
+            with patch('updates.release_info',return_value=dict(version='0.2.0-beta.4',edition='web',build='')),patch('updates.time.time',side_effect=[1000,1100,1101,1102]):
+                with patch('updates.fetch_releases',return_value=[release]):first=checker.check('beta')
+                with patch('updates.fetch_releases',side_effect=HTTPError('https://api.github.com',429,'PRIVATE',{},None)):failed=checker.check('beta')
+                self.assertEqual(failed['latest'],first['latest']);self.assertEqual(failed['last_successful_at'],1000)
+                self.assertIn('temporarily limited',failed['error']);self.assertNotIn('PRIVATE',failed['error'])
+                with patch('updates.fetch_releases',return_value=[release]) as fetch:retried=checker.check('beta')
+                self.assertFalse(retried['error']);self.assertEqual(fetch.call_count,1)
