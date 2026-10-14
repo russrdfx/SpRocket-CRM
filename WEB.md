@@ -26,7 +26,7 @@ This is a first web preview, not a claim of production readiness. Complete a rea
    docker compose --env-file deploy/.env up -d --build
    ```
 5. Open `https://crm.company.com/setup`. Enter the setup code from the file, workspace name, administrator email, display name and a password of 12–128 characters. Setup can create only the first administrator. Sign in afterward.
-6. Configure pipelines and stages in Configuration. In **Users & Teams**, create invitations and share the private links directly with intended colleagues. No invitation email is sent automatically. Invitations expire after 24 hours and can be used once.
+6. Review the editable Sales Pipeline template and configure pipelines and stages in Configuration. In **Users & Teams**, create invitations and share the private links directly with intended colleagues. No invitation email is sent automatically. Invitations expire after 24 hours and can be used once.
 
 Administrators manage workspace configuration, invitations, rules and hosting backups. Members can create/edit shared CRM records and connect their own mail/calendar accounts. Personal mailbox caches, calendar caches and saved views are scoped to the signed-in account. Logging an email or meeting shares it with the workspace's CRM records. This edition is not a public registration or multi-tenant service.
 

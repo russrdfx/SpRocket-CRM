@@ -80,10 +80,14 @@ Preserve the encryption key (`SPROCKET_TOKEN_SECRET` on Render, or `MAIL_TOKEN_K
 - **The setup code seems blank:** use Copy on the `SPROCKET_SETUP_TOKEN` value in Render's Environment page; do not copy the variable name or a masked display.
 - **Google says redirect URI mismatch:** copy the full exact HTTPS callback from Integrations, including hostname, port if any and path. Recheck after changing your domain.
 - **Calendar access fails:** check that Calendar API is enabled, audience permissions are correct and Calendar was connected separately.
-- **No deal stages are available:** create a pipeline and stages under Configuration → Pipelines.
+- **No deal stages are available:** new installations include an editable Sales Pipeline. If it has been removed or this workspace predates the template, create a pipeline and stages under Configuration → Pipelines.
 - **The free app takes time to open:** Render's free app sleeps after idle periods. An always-on plan removes that limitation.
 - **I lost my password:** try your already-linked Google account. Self-service password recovery is not yet implemented; preserve administrator access and a recovery plan.
 
 Report reproducible problems through [GitHub Issues](https://github.com/russrdfx/SpRocket-CRM/issues). Include the release, hosting type, steps and a redacted screenshot; omit credentials, invitation links, customer records and private messages.
 
 For later upgrades, use **Configuration → Updates** and follow [UPDATES.md](UPDATES.md). The administrator updates the existing workspace instead of repeating company setup.
+
+## Make Home your own
+
+Switch between **Daily desk**, **Sales overview** and **Relationship hub**. Choose **Customize home** to save your own layout. New installations include an editable Sales Pipeline under Configuration → Pipelines. Use the profile menu’s **Feature request & feedback** to prepare an email to russ@rdfx.ca. See [DASHBOARD.md](DASHBOARD.md).

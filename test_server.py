@@ -37,7 +37,7 @@ class CRMTest(unittest.TestCase):
     def test_configuration_records_and_references(self):
         state = self.request('/api/state')[1]
         self.assertEqual([], state['records'])
-        self.assertEqual([], state['settings']['pipelines'])
+        self.assertEqual('Sales Pipeline', state['settings']['pipelines'][0]['name'])
         settings = state['settings']
         settings['pipelines'] = [{'id':'demo', 'name':'Fictional test process', 'kind':'deals', 'stages':[{'id':'first', 'name':'User-defined stage', 'probability':0.5}]}]
         self.assertEqual(200, self.request('/api/settings', settings)[0])

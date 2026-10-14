@@ -14,7 +14,7 @@ class WebDeployment(unittest.TestCase):
     def tearDownClass(cls):cls.env.stop()
     def setUp(self):
         with self.web.server.connect() as db:
-            db.execute('TRUNCATE web_users,web_invites,web_attempts,web_google_pending,update_status,records,user_profiles,mail_accounts,calendar_accounts,calendar_logs,web_provider_config,saved_views CASCADE')
+            db.execute('TRUNCATE dashboard_preferences,web_users,web_invites,web_attempts,web_google_pending,update_status,records,user_profiles,mail_accounts,calendar_accounts,calendar_logs,web_provider_config,saved_views CASCADE')
     def request(self,path,data=None,cookie='',host='127.0.0.1:18766',origin='http://127.0.0.1:18766'):
         raw=json.dumps(data).encode() if data is not None else b''
         env=dict(PATH_INFO=path,REQUEST_METHOD='POST' if data is not None else 'GET',HTTP_HOST=host,HTTP_ORIGIN=origin,HTTP_COOKIE=cookie,CONTENT_TYPE='application/json',CONTENT_LENGTH=str(len(raw)),REMOTE_ADDR='127.0.0.1',**{'wsgi.input':io.BytesIO(raw)})
@@ -59,6 +59,23 @@ class WebDeployment(unittest.TestCase):
         users=self.request('/api/web/users',cookie=admin)['body']['users'];self.assertNotIn('password',users[0])
         self.assertEqual(self.request('/api/tools/view',dict(name='Private',kind='contacts',filters={}),member)['status'],200)
         self.assertEqual(self.request('/api/state',cookie=admin)['body']['views'],[])
+    def test_dashboard_preferences_member_isolation(self):
+        import copy
+        import dashboard_preferences
+        admin=self.setup_admin()
+        invite=self.request('/api/web/invite',dict(email='dashboard@example.com',role='member'),admin)
+        token=invite['body']['url'].split('token=')[1]
+        self.assertEqual(self.request('/api/web/join',dict(email='dashboard@example.com',name='SAMPLE — Member',password='SamplePassword123!',token=token))['status'],200)
+        login=self.request('/api/web/login',dict(email='dashboard@example.com',password='SamplePassword123!'))
+        member=next(v.split(';')[0] for k,v in login['headers'] if k=='Set-Cookie')
+        draft=copy.deepcopy(dashboard_preferences.DEFAULTS);draft['default_tab']='relationships'
+        self.assertEqual(self.request('/api/dashboard/preferences',draft,member)['status'],200)
+        self.assertEqual(self.request('/api/state',cookie=member)['body']['dashboard'],draft)
+        self.assertEqual(self.request('/api/state',cookie=admin)['body']['dashboard'],dashboard_preferences.DEFAULTS)
+        self.assertEqual(self.request('/api/dashboard/preferences',draft)['status'],401)
+        self.assertEqual(self.request('/api/dashboard/preferences',draft,member,origin='https://evil.example')['status'],403)
+        self.assertNotIn('events',self.request('/api/state',cookie=member)['body'])
+
     def test_brute_force_limit_and_query_parameters(self):
         self.setup_admin()
         for _ in range(10):self.assertEqual(self.request('/api/web/login',dict(email='admin@example.com',password='WrongPassword123'))['status'],400)

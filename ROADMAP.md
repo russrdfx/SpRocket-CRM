@@ -3,7 +3,7 @@
 ## Product requirements
 
 - Free, open source, self-hostable, MIT licensed.
-- Account- and portal-agnostic. No external CRM identifiers, customer data, branding, pipeline names or custom configuration in source or sample data.
+- Account- and portal-agnostic. No external CRM identifiers, customer data, branding or customer-specific custom configuration in source or sample data.
 - Configuration is foundational: multiple pipelines, stage order/probabilities, object types, typed properties, relationships, saved views and rules belong to users.
 - Reference general CRM functionality; use an original interface.
 
@@ -63,3 +63,7 @@ Free web/database Blueprint, provider credentials encrypted in PostgreSQL, platf
 Web v0.2.0-beta.1 adds a guided company deployment path, a Render trial button with manual update control, durable hosting guidance, tagged source distribution and explicit beta limits. See [GETTING_STARTED.md](GETTING_STARTED.md) and [WEB_RELEASE.md](WEB_RELEASE.md). Google Cloud registration and hosting administration remain company responsibilities.
 
 Web v0.2.0-beta.2 adds edition-specific release checks, stable/beta selection, installed version/build metadata, a database-version guard and an approved Docker host updater with backup and app rollback. Render uses its existing deployment controls. Automatic installation, prebuilt image publishing and a signed unattended Mac updater remain future work. See [UPDATES.md](UPDATES.md).
+
+## Personalized Home delivered
+
+Three purpose-specific Home tabs, owner-scoped card visibility/order and layout preferences, a private calendar agenda, direct task completion, deal and contact follow-up summaries, and compact deduplicated conversations. New installations have a removable, editable Sales Pipeline template; upgrades preserve existing configuration. Profile-menu feedback prepares a user-reviewed email to russ@rdfx.ca with version context. See [DASHBOARD.md](DASHBOARD.md).

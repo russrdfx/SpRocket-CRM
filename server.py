@@ -12,6 +12,7 @@ from auth import OIDC
 from desktop_bridge import DesktopBridge
 import sso_config
 import record_forms
+import dashboard_preferences
 import crm_tools
 import workspace_tools
 import phone_numbers
@@ -50,6 +51,7 @@ def initialize():
         CREATE TABLE IF NOT EXISTS activities (id TEXT PRIMARY KEY, record_id TEXT NOT NULL REFERENCES records(id) ON DELETE CASCADE, body TEXT NOT NULL, created TEXT NOT NULL);
         ''')
         MAIL.initialize(db)
+        dashboard_preferences.initialize(db)
         crm_tools.initialize(db)
         workspace_tools.initialize(db)
         CALENDAR.initialize(db)
@@ -62,7 +64,7 @@ def initialize():
                 ('deals', 'Deals', [{'key': 'amount', 'label': 'Amount', 'type': 'number'}, {'key': 'close_date', 'label': 'Close date', 'type': 'date'}]),
                 ('tasks', 'Tasks', [{'key': 'due_date', 'label': 'Due date', 'type': 'date'}, {'key': 'priority', 'label': 'Priority', 'type': 'select', 'options': ['Low', 'Medium', 'High']}]),
                 ('tickets', 'Tickets', [{'key': 'priority', 'label': 'Priority', 'type': 'select', 'options': ['Low', 'Medium', 'High', 'Urgent']}])]
-            settings = {'name': 'Sprocket CRM', 'currency': 'USD', 'types': [{'id': k, 'name': n, 'fields': f} for k, n, f in kinds], 'pipelines': [], 'owners': []}
+            settings = {'name': 'Sprocket CRM', 'currency': 'USD', 'types': [{'id': k, 'name': n, 'fields': f} for k, n, f in kinds], 'pipelines': [{'id': 'sales-pipeline', 'name': 'Sales Pipeline', 'kind': 'deals', 'stages': [{'id': ident, 'name': name, 'probability': probability} for ident, name, probability in [('lead', 'Lead', 0.10), ('demo-booked', 'Demo Booked', 0.20), ('demo-completed', 'Demo Completed', 0.40), ('proposal-sent', 'Proposal Sent', 0.65), ('closed-won', 'Closed Won', 1.0), ('closed-lost', 'Closed Lost', 0.0)]]}], 'owners': []}
             db.execute('INSERT INTO settings VALUES (1, ?)', (json.dumps(settings),))
         settings = load_settings(db)
         if record_forms.upgrade(settings):
@@ -296,8 +298,8 @@ class Handler(BaseHTTPRequestHandler):
             with connect() as db:
                 records = [dict(json.loads(r['body']), id=r['id'], kind=r['kind'], updated=r['updated']) for r in db.execute('SELECT * FROM records ORDER BY updated DESC')]
                 activities = [dict(json.loads(r['body']), id=r['id'], record_id=r['record_id'], created=r['created']) for r in db.execute('SELECT * FROM activities ORDER BY created DESC')]
-                return self.reply(200, {'release': release_info(), 'settings': load_settings(db), 'records': records, 'activities': activities, 'views': workspace_tools.views(db,self.mail_owner())['views'], 'phone': {'countries':phone_numbers.countries()}})
-        file = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/login': 'login.html', '/login.js': 'login.js', '/mail.js': 'mail.js', '/create.js': 'create.js', '/productivity.js': 'productivity.js', '/workspace.js':'workspace.js', '/features.js':'features.js', '/phone.js':'phone.js', '/updates.js':'updates.js'}.get(path)
+                return self.reply(200, {'release': release_info(), 'settings': load_settings(db), 'records': records, 'activities': activities, 'dashboard': dashboard_preferences.load(db,self.mail_owner()), 'views': workspace_tools.views(db,self.mail_owner())['views'], 'phone': {'countries':phone_numbers.countries()}})
+        file = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/login': 'login.html', '/login.js': 'login.js', '/mail.js': 'mail.js', '/create.js': 'create.js', '/productivity.js': 'productivity.js', '/workspace.js':'workspace.js', '/features.js':'features.js', '/phone.js':'phone.js', '/updates.js':'updates.js', '/dashboard.js':'dashboard.js'}.get(path)
         if path.startswith('/assets/brand/'):
             candidate = (ROOT / 'web' / path.lstrip('/')).resolve()
             asset_root = (ROOT / 'web/assets/brand').resolve()
@@ -345,6 +347,11 @@ class Handler(BaseHTTPRequestHandler):
             data = json.loads(self.rfile.read(length))
             path = urlparse(self.path).path
             now = datetime.now(timezone.utc).isoformat()
+            if path=='/api/dashboard/preferences':
+                if self.headers.get('Origin') != (AUTH.origin if AUTH.enabled else 'http://' + self.headers.get('Host','')):
+                    return self.reply(403,{'error':'Same-origin browser request required.'})
+                with connect() as db:
+                    return self.reply(200,dashboard_preferences.save(db,self.mail_owner(),data))
             if path=='/api/phone':
                 if not isinstance(data,dict):raise ValueError('Phone request must be an object.')
                 return self.reply(200,phone_numbers.format_phone(data.get('value',''),data.get('country') or phone_numbers.DEFAULT_COUNTRY,data.get('typing') is True))

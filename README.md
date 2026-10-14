@@ -84,7 +84,7 @@ Open http://127.0.0.1:8765. Set `PORT` to use another port and `SPROCKET_DB` to 
 - Overview counts and weighted value using configured probabilities.
 - Validation prevents removal of pipelines or stages still used by records.
 
-The workspace starts empty. No external CRM records or configuration are imported. Activity logs do not send email or place calls. The separate Inbox compose/reply feature sends through a connected provider only when you choose Send.
+The workspace starts with no records and an editable Sales Pipeline template. No external CRM records or configuration are imported. Activity logs do not send email or place calls. The separate Inbox compose/reply feature sends through a connected provider only when you choose Send.
 
 ## Optional sample data
 
@@ -182,7 +182,7 @@ Profile editing is available from the top-right **Profile & preferences** menu a
 
 ### Configure deal pipelines
 
-Open **Settings → Pipelines → + Pipeline**, select **Deals**, enter a pipeline name, and add the stage names and probabilities. Save, then return to Deals to create a deal. **Configure pipelines & stages** is also available in Properties and the deal creation form. New workspaces begin without a pipeline so administrators can define their own process.
+Open **Settings → Pipelines → + Pipeline**, select **Deals**, enter a pipeline name, and add the stage names and probabilities. Save, then return to Deals to create a deal. **Configure pipelines & stages** is also available in Properties and the deal creation form. New workspaces include an editable Sales Pipeline: Lead (10%), Demo Booked (20%), Demo Completed (40%), Proposal Sent (65%), Closed Won (100%) and Closed Lost (0%). Administrators can edit or remove it and add their own pipelines. Existing workspaces are not changed on upgrade.
 
 ### Workspace productivity additions
 
@@ -203,3 +203,7 @@ The private web edition includes **Sign in with Google** for explicitly linked w
 About SpRocket CRM shows the installed version and edition, with a build identifier when available. See [installed versions and upgrade design](WEB.md#installed-version-and-upgrade-design) for how updates preserve an existing workspace.
 
 **Updates:** Administrators can check edition-specific stable/beta releases under Configuration → Updates. Web v0.2.0-beta.2 includes installed-version/build information and a Docker host upgrade tool with backup and app rollback. Render updates target the existing service. See [update instructions and limits](UPDATES.md).
+
+### Personalized Home and feedback
+
+Home has Daily desk, Sales overview and Relationship hub tabs, each focused on different work. Use **Customize home** to choose and order cards, a default tab, compact spacing and other personal preferences. The profile menu includes **Feature request & feedback**, which prepares an email to russ@rdfx.ca for the user to review and send. See [Home dashboards and feedback](DASHBOARD.md).
