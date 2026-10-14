@@ -16,6 +16,8 @@ Each company runs its own installation and database, on its own domain or hostin
 
 **Hosting budget:** approximately US$13–15/month is an always-on starting point on Render, with app hosting and database paid separately on a free Hobby workspace. It is a light-use estimate, not a tested 5–10-user capacity promise. See the [pricing chart and sizing guidance](GETTING_STARTED.md#what-will-hosting-cost).
 
+**Already use AWS, Azure or company servers?** Host the Docker package in your existing infrastructure. See the [alternative hosting options](GETTING_STARTED.md#already-use-aws-azure-or-another-provider) and administrator deployment notes.
+
 Your first deployment opens workspace setup. Create the administrator using its private setup code, configure Google once if wanted, and invite your team. New companies deploy separately; this is not a shared public registration service.
 
 **Web sign-in — Google or your workspace password.**

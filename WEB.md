@@ -14,6 +14,22 @@ Vercel is not the initial deployment target: the current web package uses a cont
 
 This is a first web preview, not a claim of production readiness. Complete a real HTTPS hosting test, recovery drill and independent security review before exposing real customer data. Docker/container testing must be done on a host with Docker installed; local verification uses Gunicorn and a separate PostgreSQL database.
 
+## Existing cloud accounts and company servers
+
+The current Docker Compose package can be deployed on a suitable Linux virtual machine in AWS, Azure, another cloud provider, or a company-managed server. Render is one supported pilot route, not a requirement. Use your company's own hostname, for example `crm.company.com`, and follow [First installation](#first-installation) for the bundled-database layout.
+
+- **AWS:** an EC2 Linux server can run the package. A separate Amazon RDS PostgreSQL database is an optional managed-database layout; see [AWS's EC2/RDS connection guide](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_GettingStarted.CreatingConnecting.PostgreSQL.html).
+- **Azure:** a Linux virtual machine can run the package. Azure Database for PostgreSQL is an optional managed-database layout; see [Microsoft's Linux/PostgreSQL guidance](https://learn.microsoft.com/en-us/training/paths/migrate-linux-postgres-azure/).
+- **Other providers / company servers:** use an always-on Linux host with Docker Compose, persistent volumes and an HTTPS hostname. Size it for the workload and include backups in your operating plan.
+
+### Optional managed PostgreSQL layout
+
+The supplied `compose.yaml` starts a local `db` service, points the app's `DATABASE_URL` to it and waits for its health check. Merely adding a managed database URL to `deploy/.env` does not override that Compose setting. An administrator must adapt the deployment to use the provider's PostgreSQL endpoint and remove the app's dependency on the bundled database. Keep database access private to the app's network, follow the provider's TLS/certificate requirements and preserve the original token-encryption key during migrations.
+
+The bundled Docker upgrade tool backs up the Compose `db` service. It must not be used unchanged as the backup procedure for an external RDS/Azure database. Use a provider-specific backup/restore plan and a reviewed app-only deployment procedure while retaining the same database and secrets. Start with one always-on application instance and the documented single Gunicorn process; multiple replicas, scale-to-zero hosting and multi-process sync/OAuth coordination need additional engineering.
+
+Register Google's exact mail, Calendar and sign-in callbacks against the final HTTPS hostname, as described below. Verify record persistence after an app restart, sign-in, provider connections and an isolated backup restore. AWS/Azure-specific installations and the full Compose hosting flow still require deployment verification; no one-click AWS/Azure templates are included. Cloud costs are provider-specific and are not covered by the Render estimates in the getting-started guide.
+
 ## First installation
 
 1. Install Docker Engine with the Compose plugin on your server. Point your hostname's DNS A/AAAA records at that server and allow inbound ports 80 and 443. Remove any stale AAAA record pointing elsewhere.

@@ -7,6 +7,8 @@ SpRocket CRM Web **v0.2.0-beta.3** is a free, open-source public beta. Each comp
 | Option | Best for | What to expect |
 | --- | --- | --- |
 | Render Free trial | Trying the app before choosing hosting | HTTPS address included; app sleeps when idle; manual sync; database expires after 30 days. |
+| Existing AWS account | Companies already using AWS | Run the Docker package on an EC2 Linux server; use bundled PostgreSQL or an IT-configured RDS PostgreSQL database. See [existing-cloud options](#already-use-aws-azure-or-another-provider). |
+| Existing Azure subscription | Companies already using Azure | Run the Docker package on a Linux virtual machine; use bundled PostgreSQL or an IT-configured Azure Database for PostgreSQL. See [existing-cloud options](#already-use-aws-azure-or-another-provider). |
 | Your own Docker server | A lasting private installation | Your domain, persistent database and automatic background checks. An administrator manages server costs, updates and backups. |
 | Durable managed hosting | Teams that prefer a hosting provider | An always-on Docker app and persistent PostgreSQL database, with a backup/recovery plan. Review the provider's current prices before upgrading. |
 
@@ -15,6 +17,24 @@ SpRocket CRM Web **v0.2.0-beta.3** is a free, open-source public beta. Each comp
 **The button creates a trial in your own Render account.** Review the proposed app and database before approving. Both must show Free. The template is a temporary test, not permanent free company hosting. See [Render's free-tier limits](https://render.com/docs/free). If your Render workspace already has a Free PostgreSQL database, use a separate eligible workspace or choose another hosting option; do not overwrite an existing installation.
 
 For the lasting Docker option, follow [the installation commands in WEB.md](WEB.md#first-installation). For managed hosting, use the architecture in WEB.md: one Docker application process, persistent PostgreSQL, a stable encryption key, HTTPS and backups. You can keep Render after a trial by choosing suitable paid app/database plans; the free-trial button does not buy or upgrade anything.
+
+## Already use AWS, Azure or another provider?
+
+You can host SpRocket in your company's existing cloud account or on a company-managed server. **Render is optional.** Your team can keep its usual domain, billing, infrastructure management and backup arrangements.
+
+| Existing service | Starting approach | Database choices |
+| --- | --- | --- |
+| AWS | EC2 Linux virtual machine with Docker Compose | PostgreSQL included in the Compose package, or Amazon RDS for PostgreSQL configured by IT. |
+| Azure | Linux virtual machine with Docker Compose | PostgreSQL included in the Compose package, or Azure Database for PostgreSQL configured by IT. |
+| Another cloud provider or company server | Always-on Linux server with Docker Compose and persistent storage | Bundled PostgreSQL, or a compatible PostgreSQL service configured by IT. |
+
+**The simplest path with the current package:** ask your IT administrator to provide a suitable Linux server, point a hostname such as `crm.company.com` to it, and follow [WEB.md → First installation](WEB.md#first-installation). That package runs the app, PostgreSQL and HTTPS proxy together. Your administrator manages persistent storage, backups and upgrades.
+
+**If your company prefers a managed database:** the application can use a PostgreSQL connection through `DATABASE_URL`, but the supplied Compose file is wired to its bundled database. RDS or Azure PostgreSQL requires a reviewed configuration change, private connectivity, the provider's TLS settings and a host-specific backup/update procedure. It is not a one-click option in the supplied template. See [the administrator notes](WEB.md#existing-cloud-accounts-and-company-servers).
+
+Provider references: [AWS EC2 with RDS PostgreSQL](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_GettingStarted.CreatingConnecting.PostgreSQL.html) and [Azure Linux/PostgreSQL guidance](https://learn.microsoft.com/en-us/training/paths/migrate-linux-postgres-azure/). These describe provider infrastructure; they are not SpRocket-specific deployment templates.
+
+The Docker deployment approach is portable, but AWS- and Azure-specific installations have not yet been verified for this project. Test sign-in, records, Gmail/Calendar connections and backup recovery before rolling out to the team. The Render price chart below applies only to Render; costs in an existing cloud account depend on its services, storage, network charges and contract. Existing subscriptions do not necessarily include additional app/database hosting at no cost.
 
 ## What will hosting cost?
 
