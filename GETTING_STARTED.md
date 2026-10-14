@@ -16,6 +16,40 @@ SpRocket CRM Web **v0.2.0-beta.3** is a free, open-source public beta. Each comp
 
 For the lasting Docker option, follow [the installation commands in WEB.md](WEB.md#first-installation). For managed hosting, use the architecture in WEB.md: one Docker application process, persistent PostgreSQL, a stable encryption key, HTTPS and backups. You can keep Render after a trial by choosing suitable paid app/database plans; the free-trial button does not buy or upgrade anything.
 
+## What will hosting cost?
+
+SpRocket has **no software subscription or per-user licence fee**. Your company pays its hosting provider for the app and database. The figures below are **US dollars per month for one company installation**, not per CRM user. Prices checked **October 13, 2026**.
+
+### Example Render budgets
+
+These examples keep the **Hobby workspace at $0/month**. The app's compute plan and PostgreSQL plan are selected and billed separately.
+
+| Setup | App hosting | Database compute | Approximate monthly budget | What to expect |
+| --- | ---: | ---: | ---: | --- |
+| Temporary trial | Free | Free | $0 within included usage | App sleeps; database expires after 30 days. |
+| Paid database only | Free | $6 · 256 MB RAM | $6–8 | Database trial limit removed; app still sleeps. |
+| Always-on starting point | $7 · 512 MB RAM | $6 · 256 MB RAM | **$13–15** | Low-cost starting point for light usage. |
+| More database memory | $7 · 512 MB RAM | $19 · 1 GB RAM | **$26–28** | More room for database work as records and synced mail grow. |
+| More app and database memory | $25 · 2 GB RAM | $19 · 1 GB RAM | **$44–46** | More room for imports, concurrent requests and a larger workspace. |
+
+Paid totals are rounded planning estimates with a small database-storage allowance, not fixed-price bundles. Render lists expandable PostgreSQL storage at **$0.30 per GB/month**; confirm the included storage, selected capacity and total in the dashboard before approving an upgrade. Taxes, currency conversion, usage above included bandwidth/build allowances, domain registration and any separately priced services are additional. No extra worker or paid Render Pro workspace is assumed here.
+
+On Render's [pricing page](https://render.com/pricing), app hosting appears under **Compute → Services & Workers**, and database pricing under **Postgres**. New plan labels may use CPU/RAM identifiers: the $7 app is `0.5c-512mb` (formerly Starter), the $6 database is `0.1c-256mb`, and the $19 database is `0.5c-1g`. See [compute plan specifications](https://render.com/docs/compute-plans) and [billing details](https://render.com/docs/faq#what-does-render-bill-for).
+
+### Is $13–15 enough for 5–10 users?
+
+**It is a reasonable budget to try for a small team with light usage; it is not a verified capacity guarantee.** SpRocket has not yet been load-tested with 5–10 simultaneous users on these plans. The number of stored records, retained email history, simultaneous inbox imports and reporting requests matter more than the number of invited users alone. The starter app has only 512 MB RAM and the smallest paid database only 256 MB.
+
+Start with a small import window and test the team's normal work. Watch app/database memory, CPU, response times, failed requests and sync delays in Render. If database load is the constraint, the $26–28 option is the next budgeting example; if app memory or CPU is the constraint, increase app compute instead. Extra memory creates headroom but does not replace performance testing. Before a larger rollout, test pagination and activity-history growth: the current app loads workspace records and activity into the browser together.
+
+CRM members sign in to SpRocket; they do **not** each need a Render dashboard account. Adding CRM users does not create a SpRocket licence charge, although increased usage can require larger hosting plans.
+
+### Which upgrades remove the trial limits?
+
+Upgrade **both the app service and the database** for an always-on installation. A paid database alone does not stop a free app from sleeping after 15 idle minutes and taking about a minute to wake. Upgrading the Render workspace to Pro alone also does not upgrade those resources. See [Render's free-instance limits](https://render.com/docs/free).
+
+The free trial template sets `SPROCKET_WEB_JOBS=0`. Moving to paid hosting does not change that setting automatically. To run the existing background scheduler, an administrator must enable `SPROCKET_WEB_JOBS=1` on the always-on service and configure each account's sync preferences. Keep the documented single-process deployment; changing the worker count requires a separate review of sync/OAuth state. Preserve the database and encryption key and follow [UPDATES.md](UPDATES.md) when making changes.
+
 ## 1. Deploy the trial
 
 1. Click **Deploy to Render**, then create or sign in to your own Render account.

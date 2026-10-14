@@ -14,6 +14,8 @@ Each company runs its own installation and database, on its own domain or hostin
 
 **Temporary trial:** Render Free sleeps when idle and its PostgreSQL database expires after 30 days. Review the Free resources before approving deployment. **Lasting installation:** use [Docker Compose on your server](WEB.md#first-installation) or durable managed app/database plans with backups. Upstream pushes do not automatically update your deployment.
 
+**Hosting budget:** approximately US$13–15/month is an always-on starting point on Render, with app hosting and database paid separately on a free Hobby workspace. It is a light-use estimate, not a tested 5–10-user capacity promise. See the [pricing chart and sizing guidance](GETTING_STARTED.md#what-will-hosting-cost).
+
 Your first deployment opens workspace setup. Create the administrator using its private setup code, configure Google once if wanted, and invite your team. New companies deploy separately; this is not a shared public registration service.
 
 **Web sign-in — Google or your workspace password.**

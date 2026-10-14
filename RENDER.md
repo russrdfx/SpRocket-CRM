@@ -32,3 +32,7 @@ Check usage/billing settings before testing. This template chooses Free resource
 The hosted profile identifies password-based workspace sign-in separately from desktop OIDC SSO. The first registered user is the account administrator.
 
 Google sign-in is available after registering `https://YOUR-SERVICE.onrender.com/auth/google/callback`. Existing users link their matching Google account from Configuration → Security while signed in; invited members can join through Google without a new password. The login page then offers Sign in with Google. Gmail and Calendar permissions remain separate.
+
+## Budgeting beyond the trial
+
+See the [hosting cost chart](GETTING_STARTED.md#what-will-hosting-cost) for approximate US-dollar monthly costs, the difference between workspace/app/database plans, and sizing guidance for a 5–10-user team. Upgrade both resources to remove idle sleep and database expiration. The Blueprint remains a free trial; paid hosting and background sync are separate choices.

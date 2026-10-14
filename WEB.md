@@ -6,6 +6,8 @@ SpRocket's web edition runs one shared workspace per organization on its own HTT
 
 ## Hosting
 
+See the [hosting pricing chart and small-team sizing guidance](GETTING_STARTED.md#what-will-hosting-cost) for current example Render budgets. SpRocket has no per-user licence fee; provider compute, storage and usage charges depend on the installation.
+
 Use a Linux server or a container host that supports Docker Compose and persistent volumes. A registrar's DNS record points your CRM hostname, for example `crm.company.com`, to that server. Docker Compose starts PostgreSQL, the production Gunicorn application server and Caddy. Caddy obtains and renews HTTPS certificates. Only ports 80 and 443 are published; the database and application use the private deployment network.
 
 Vercel is not the initial deployment target: the current web package uses a continuously running process for provider connection state and background checks. A Vercel adaptation would need external durable services for those responsibilities. A static interface preview is possible there, but it would not be the full deployment described here.
