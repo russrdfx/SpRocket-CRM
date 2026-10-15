@@ -91,3 +91,7 @@ Implemented locally: a persistent personal notification center for email opens, 
 ## Record usability and sales development update
 
 Implemented locally: dedicated company details with related activity and separate editing; owner name/email alias consolidation with legacy assignment preservation; deal forms without configuration-navigation shortcuts; live period/owner/pipeline forecasting; explicit stage outcomes; and an administrator setup guide with personal progress and optional integrations. Released in web v0.2.0-beta.6. Historical forecast snapshots, quotas and advanced sales reporting remain future work.
+
+## Web v0.2.0-beta.7
+
+Ticket statuses/details and web team administration are included, along with host job health, optional backup receipt visibility, isolated Docker restore-test tooling and observed sales insights. Account recovery is administrator-assisted; there is no automatic recovery email. Always-on hosting, backup scheduling/off-site storage, live Apollo entitlement verification, native ZoomInfo, date-based conversion funnels and closed-browser push delivery remain separate work. See TEAM_ADMIN.md, HOST_OPERATIONS.md and SALES_INSIGHTS.md.

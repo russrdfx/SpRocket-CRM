@@ -1,6 +1,6 @@
 # Start your company's SpRocket workspace
 
-SpRocket CRM Web **v0.2.0-beta.6** is a free, open-source public beta. Each company runs its own installation and database. Hosting may cost money. There is no shared public signup service, and you do not need a SpRocket domain.
+SpRocket CRM Web **v0.2.0-beta.7** is a free, open-source public beta. Each company runs its own installation and database. Hosting may cost money. There is no shared public signup service, and you do not need a SpRocket domain.
 
 ## Choose your hosting
 
@@ -136,7 +136,7 @@ Preserve the encryption key (`SPROCKET_TOKEN_SECRET` on Render, or `MAIL_TOKEN_K
 - **Calendar access fails:** check that Calendar API is enabled, audience permissions are correct and Calendar was connected separately.
 - **No deal stages are available:** new installations include an editable Sales Pipeline. If it has been removed or this workspace predates the template, create a pipeline and stages under Configuration → Pipelines.
 - **The free app takes time to open:** Render's free app sleeps after idle periods. An always-on plan removes that limitation.
-- **I lost my password:** try your already-linked Google account. Self-service password recovery is not yet implemented; preserve administrator access and a recovery plan.
+- **I lost my password:** try your already-linked Google account. Ask an administrator to verify your identity and create a private recovery link under Users & Teams. Preserve administrator access and the installation encryption key. See [TEAM_ADMIN.md](TEAM_ADMIN.md).
 
 Report reproducible problems through [GitHub Issues](https://github.com/russrdfx/SpRocket-CRM/issues). Include the release, hosting type, steps and a redacted screenshot; omit credentials, invitation links, customer records and private messages.
 

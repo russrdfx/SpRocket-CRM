@@ -1,6 +1,7 @@
 """Sprocket CRM local development server. Python 3.9+, no dependencies."""
 import json
 import math
+import sales_insights
 import os
 import sqlite3
 import uuid
@@ -68,6 +69,7 @@ def initialize():
         followups.initialize(db)
         notifications.initialize(db)
         onboarding.initialize(db)
+        sales_insights.initialize(db)
         if not db.execute('SELECT 1 FROM settings').fetchone():
             kinds = [
                 ('contacts', 'Contacts', [{'key': 'email', 'label': 'Email', 'type': 'email'}, {'key': 'phone', 'label': 'Phone', 'type': 'text'}]),
@@ -348,7 +350,9 @@ class Handler(BaseHTTPRequestHandler):
                 activities = [dict(json.loads(r['body']), id=r['id'], record_id=r['record_id'], created=r['created']) for r in db.execute('SELECT * FROM activities ORDER BY created DESC')]
                 MAIL.tracking.decorate(db,activities)
                 return self.reply(200, {'release': release_info(), 'settings': load_settings(db), 'records': records, 'activities': activities, 'navigation': navigation_preferences.load(db,self.mail_owner(),load_settings(db)), 'dashboard': dashboard_preferences.load(db,self.mail_owner()), 'views': workspace_tools.views(db,self.mail_owner())['views'], 'phone': {'countries':phone_numbers.countries()}})
-        file = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/login': 'login.html', '/login.js': 'login.js', '/mail.js': 'mail.js', '/create.js': 'create.js', '/productivity.js': 'productivity.js', '/workspace.js':'workspace.js', '/features.js':'features.js', '/phone.js':'phone.js', '/updates.js':'updates.js', '/dashboard.js':'dashboard.js', '/navigation.js':'navigation.js', '/enrichment.js':'enrichment.js', '/tracking.js':'tracking.js', '/followups.js':'followups.js', '/notifications.js':'notifications.js', '/forecast.js':'forecast.js', '/onboarding.js':'onboarding.js'}.get(path)
+        if path=='/api/sales/insights':
+            with connect() as db:return self.reply(200,sales_insights.insights(db,load_settings(db)))
+        file = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/login': 'login.html', '/login.js': 'login.js', '/mail.js': 'mail.js', '/create.js': 'create.js', '/productivity.js': 'productivity.js', '/workspace.js':'workspace.js', '/features.js':'features.js', '/phone.js':'phone.js', '/updates.js':'updates.js', '/dashboard.js':'dashboard.js', '/navigation.js':'navigation.js', '/enrichment.js':'enrichment.js', '/tracking.js':'tracking.js', '/followups.js':'followups.js', '/notifications.js':'notifications.js', '/forecast.js':'forecast.js', '/onboarding.js':'onboarding.js','/sales-insights.js':'sales-insights.js'}.get(path)
         if path.startswith('/assets/brand/'):
             candidate = (ROOT / 'web' / path.lstrip('/')).resolve()
             asset_root = (ROOT / 'web/assets/brand').resolve()
@@ -553,8 +557,11 @@ class Handler(BaseHTTPRequestHandler):
                     if old and old['kind'] != data['kind']:
                         raise ValueError('Record type cannot be changed.')
                     db.execute('INSERT INTO records VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET body=excluded.body, updated=excluded.updated', (ident, data['kind'], json.dumps(body), now))
+                    if data['kind']=='deals':sales_insights.observe(db,ident,body,now)
                     if data['kind']=='deals':automation.stage_changed(db,ident,json.loads(old['body']) if old else None,body,now,validate_record)
                 elif path == '/api/delete':
+                    db.execute('DELETE FROM deal_observations WHERE deal_id=?',(data['id'],))
+                    db.execute('DELETE FROM deal_transitions WHERE deal_id=?',(data['id'],))
                     db.execute('DELETE FROM records WHERE id=?', (data['id'],))
                     for row in db.execute('SELECT * FROM records').fetchall():
                         body = json.loads(row['body'])

@@ -33,6 +33,8 @@ accounts=Accounts(server.connect,origin,os.environ.get('SPROCKET_SETUP_TOKEN',''
 from web_google import GoogleSignIn,GoogleSignInError
 google=GoogleSignIn(accounts);google.initialize()
 with server.connect() as db:db.execute("CREATE TABLE IF NOT EXISTS web_calendar_auto(account_id TEXT PRIMARY KEY REFERENCES calendar_accounts(id) ON DELETE CASCADE,start_date TEXT NOT NULL,end_date TEXT NOT NULL,enabled INTEGER NOT NULL DEFAULT 0,checked DOUBLE PRECISION NOT NULL DEFAULT 0,error TEXT NOT NULL DEFAULT '')")
+import web_operations
+with server.connect() as db:web_operations.initialize(db)
 server.AUTH=accounts
 
 class WebHandler(server.Handler):
@@ -51,7 +53,7 @@ class WebHandler(server.Handler):
         if path.startswith('/email-open/'):return self.tracking_pixel()
         if path=='/health':return self.reply(200,{'ready':True})
         if path.startswith(('/desktop/','/api/desktop/')):return self.reply(404,{'error':'Not available in the web version.'})
-        if path in ('/setup','/join'):return self.html('web-login.html')
+        if path in ('/setup','/join','/recover'):return self.html('web-login.html')
         if path in ('/web-login.js','/web-admin.js'):
             self.status=200;self.send_header('Content-Type','text/javascript');self.wfile.write((server.ROOT/'web'/path[1:]).read_bytes());return
         if path=='/login':return self.html('web-login.html')
@@ -83,9 +85,12 @@ class WebHandler(server.Handler):
         if path=='/api/web/provider':
             if not self.sso_admin():return self.reply(403,{'error':'Administrator access required.'})
             return self.reply(200,web_provider.status())
+        if path=='/api/web/operations':
+            if not self.sso_admin():return self.reply(403,{'error':'Administrator access required.'})
+            return self.reply(200,web_operations.status(server.connect,os.environ.get('SPROCKET_WEB_JOBS','1')=='1'))
         if path=='/api/web/users':
             if not self.sso_admin():return self.reply(403,{'error':'Administrator access required.'})
-            return self.reply(200,{'users':accounts.users()})
+            return self.reply(200,accounts.administration())
         if path=='/api/sso':return self.reply(200,{'web_accounts':True})
         super().do_GET()
         if path=='/' and self.status==200:
@@ -95,13 +100,14 @@ class WebHandler(server.Handler):
         path=urlsplit(self.path).path
         if self.headers.get('Origin')!=origin:return self.reply(403,{'error':'Invalid origin'})
         if path.startswith(('/desktop/','/api/desktop/')):return self.reply(404,{'error':'Not available in the web version.'})
-        if path in ('/api/web/login','/api/web/setup','/api/web/join','/api/web/invite','/api/web/provider','/api/web/calendar-auto'):
+        if path in ('/api/web/login','/api/web/setup','/api/web/join','/api/web/invite','/api/web/provider','/api/web/calendar-auto','/api/web/manage','/api/web/recover'):
             if self.headers.get('Content-Type','').split(';')[0]!='application/json':return self.reply(415,{'error':'JSON required'})
             try:
                 length=int(self.headers.get('Content-Length',0))
                 if not 0<length<=10000:raise ValueError('Request is too large or empty.')
                 data=json.loads(self.rfile.read(length))
                 if not isinstance(data,dict):raise ValueError('Invalid request.')
+                if path=='/api/web/recover':return self.reply(200,accounts.recover(data))
                 if path=='/api/web/login':return self.reply(200,{'ok':True},[accounts.login(data,self.client_address[0])])
                 if path=='/api/web/setup':accounts.register(data,setup=True);return self.reply(200,{'ok':True})
                 if path=='/api/web/join':accounts.register(data);return self.reply(200,{'ok':True})
@@ -117,9 +123,12 @@ class WebHandler(server.Handler):
                         db.execute('INSERT INTO web_calendar_auto(account_id,start_date,end_date,enabled) VALUES (?,?,?,?) ON CONFLICT(account_id) DO UPDATE SET start_date=excluded.start_date,end_date=excluded.end_date,enabled=excluded.enabled,checked=0,error=\'\'',(data['account_id'],data['start'],data['end'],int(data['enabled'])))
                     return self.reply(200,{'ok':True})
                 if not self.sso_admin():return self.reply(403,{'error':'Administrator access required.'})
+                if path=='/api/web/manage':return self.reply(200,accounts.manage(accounts.user(self.headers)['subject'],data))
                 if path=='/api/web/provider':return self.reply(200,web_provider.save(data))
-                return self.reply(200,accounts.invite(data))
-            except (ValueError,KeyError,TypeError,sqlite3.IntegrityError,server.MailError):return self.reply(400,{'error':'Check the entered details, invitation, setup code, or sign-in attempt. Passwords need 12–128 characters.'})
+                return self.reply(200,accounts.invite(data,accounts.user(self.headers)['subject']))
+            except (ValueError,KeyError,TypeError,sqlite3.IntegrityError,server.MailError) as error:
+                message=str(error) if path in ('/api/web/manage','/api/web/recover') and isinstance(error,ValueError) else 'Check the entered details, invitation, setup code, or sign-in attempt. Passwords need 12–128 characters.'
+                return self.reply(400,{'error':message})
         if not accounts.user(self.headers):return self.reply(401,{'error':'Sign-in required'})
         if path in ('/api/settings','/api/sso','/api/sso/test','/api/automation/rule','/api/updates/check') and not self.sso_admin():return self.reply(403,{'error':'Administrator access required.'})
         if path.startswith('/api/sso'):return self.reply(400,{'error':'This web preview uses workspace accounts. OIDC web sign-in is a future integration.'})
@@ -152,16 +161,19 @@ def application(environ,start_response):
 job_lock=threading.Lock()
 def background_tick():
     with job_lock:
+        failures=0;web_operations.started(server.connect)
         with server.connect() as db:
             active=db.execute('SELECT id,name FROM web_users WHERE active=1').fetchall()
         for user in active:
             try:
                 owner=json.dumps([accounts.issuer,user['id']]);profile=server.MAIL.profile(owner)
                 server.MAIL.auto_tick(owner,{'_crm_owner':profile.get('name') or user['name']})
-            except Exception:pass # Account status records provider errors; do not log private payloads.
+                with server.connect() as db:failures+=db.execute("SELECT COUNT(*) FROM mail_auto s JOIN mail_accounts a ON a.id=s.account_id WHERE a.owner=? AND s.enabled=1 AND s.error<>''",(owner,)).fetchone()[0]
+            except Exception:failures+=1 # Account status records provider errors; never expose private payloads.
         with server.connect() as db:
             jobs=db.execute('SELECT s.*,a.owner FROM web_calendar_auto s JOIN calendar_accounts a ON a.id=s.account_id WHERE s.enabled=1 AND s.checked<?',(time.time()-600,)).fetchall()
         for job in jobs:
+            if job['owner'] not in {json.dumps([accounts.issuer,u['id']]) for u in active}:continue
             error=''
             try:
                 continuation=''
@@ -169,13 +181,19 @@ def background_tick():
                     result=server.CALENDAR.sync(job['owner'],dict(account_id=job['account_id'],start=job['start_date'],end=job['end_date'],page_token=continuation))
                     continuation=result['next_page']
                     if not continuation:break
-            except server.MailError as exc:error=str(exc)
+            except server.MailError:error='Calendar refresh failed. Try syncing manually.'
             except Exception:error='Calendar refresh failed. Try syncing manually.'
+            if error:failures+=1
             with server.connect() as db:db.execute('UPDATE web_calendar_auto SET checked=?,error=? WHERE account_id=?',(time.time(),error,job['account_id']))
-        with server.connect() as db:server.automation.inactive(db,server.validate_record)
+        with server.connect() as db:
+            server.automation.inactive(db,server.validate_record)
+            server.sales_insights.insights(db,server.load_settings(db))
+        web_operations.finished(server.connect,failures)
 def background_loop():
     while True:
         try:background_tick()
-        except Exception:pass
+        except Exception:
+            try:web_operations.finished(server.connect,1)
+            except Exception:pass
         time.sleep(60)
 if os.environ.get('SPROCKET_WEB_JOBS','1')=='1':threading.Thread(target=background_loop,daemon=True).start()

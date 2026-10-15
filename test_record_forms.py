@@ -20,8 +20,22 @@ class RecordFormTest(unittest.TestCase):
         self.assertTrue({'first_name','last_name','job_title','lifecycle_stage','lead_status'} <= keys['contacts'])
         self.assertTrue({'domain','employees','annual_revenue','linkedin_url','time_zone'} <= keys['companies'])
         self.assertTrue({'deal_type','amount','close_date','priority'} <= keys['deals'])
-        self.assertTrue({'source','priority','create_date'} <= keys['tickets'])
+        self.assertTrue({'ticket_status','source','priority','create_date'} <= keys['tickets'])
         self.assertTrue({'task_type','queue','due_date','due_time','priority'} <= keys['tasks'])
+
+    def test_ticket_status_upgrade_preserves_custom_choices_and_pipelines(self):
+        import copy
+        custom=record_forms.field('ticket_status','Support status','select',['Open','Resolved'])
+        settings={'creation_schema_version':5,'types':[{'id':'tickets','fields':[custom]}],
+                  'pipelines':[{'id':'support','kind':'tickets','stages':[{'id':'open','name':'Open'}]}]}
+        previous=copy.deepcopy(settings)
+        self.assertTrue(record_forms.upgrade(settings))
+        self.assertEqual(settings['types'],previous['types'])
+        self.assertEqual(settings['pipelines'],previous['pipelines'])
+        self.assertFalse(record_forms.upgrade(settings))
+        settings={'creation_schema_version':5,'types':[{'id':'tickets','fields':[]}]}
+        record_forms.upgrade(settings)
+        self.assertEqual(settings['types'][0]['fields'][0]['options'],['New','In progress','Waiting on customer','Closed'])
 
     def test_line_item_validation_and_creation_property_persistence(self):
         import json, tempfile
@@ -31,7 +45,7 @@ class RecordFormTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             try:
                 app.DB=Path(folder)/'forms.db';app.initialize()
-                samples={'contacts':{'first_name':'Sample','last_name':'Person','job_title':'Tester','lifecycle_stage':'Lead'},'companies':{'industry':'Technology','employees':5,'annual_revenue':1000,'time_zone':'America/Edmonton'},'deals':{'amount':100,'deal_type':'New business','line_items':[{'description':'Sample service','quantity':2,'unit_price':50}]},'tickets':{'source':'Email','create_date':'2026-10-10'},'tasks':{'task_type':'Call','due_date':'2026-10-11','due_time':'08:00','reminder_preference':'At due time','repeat_preference':'Weekly'}}
+                samples={'contacts':{'first_name':'Sample','last_name':'Person','job_title':'Tester','lifecycle_stage':'Lead'},'companies':{'industry':'Technology','employees':5,'annual_revenue':1000,'time_zone':'America/Edmonton'},'deals':{'amount':100,'deal_type':'New business','line_items':[{'description':'Sample service','quantity':2,'unit_price':50}]},'tickets':{'ticket_status':'In progress','source':'Email','create_date':'2026-10-10'},'tasks':{'task_type':'Call','due_date':'2026-10-11','due_time':'08:00','reminder_preference':'At due time','repeat_preference':'Weekly'}}
                 with app.connect() as db:
                     for kind,props in samples.items():
                         body=dict(props,name='SAMPLE — '+kind,links=[])

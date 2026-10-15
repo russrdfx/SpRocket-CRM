@@ -145,4 +145,7 @@ def apply_import(db,owner,data,validate):
                 if key==p['identity']:raise ValueError('A matching record was added after preview. Preview again.')
         validate(db,job['kind'],p['body']);counts[p['action']]+=1
         if p['action']!='skip':db.execute('INSERT INTO records VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET body=excluded.body,updated=excluded.updated',(p['id'],job['kind'],json.dumps(p['body']),now))
+        if p['action']!='skip' and job['kind']=='deals':
+            import sales_insights
+            sales_insights.observe(db,p['id'],p['body'],now)
     result={'ok':True,'counts':counts};db.execute('INSERT INTO import_receipts VALUES(?,?,?)',(owner,job['digest'],json.dumps(result)));return result

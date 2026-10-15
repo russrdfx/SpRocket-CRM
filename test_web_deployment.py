@@ -14,7 +14,7 @@ class WebDeployment(unittest.TestCase):
     def tearDownClass(cls):cls.env.stop()
     def setUp(self):
         with self.web.server.connect() as db:
-            db.execute('TRUNCATE onboarding_progress,notifications,notification_preferences,followup_requests,email_templates,mail_tracking_config,mail_tracking_defaults,mail_tracking_events,mail_tracking,enrichment_config,provider_enrichment_jobs,enrichment_receipts,enrichment_usage,navigation_preferences,dashboard_preferences,web_users,web_invites,web_attempts,web_google_pending,update_status,records,user_profiles,mail_accounts,calendar_accounts,calendar_logs,web_provider_config,saved_views CASCADE')
+            db.execute('TRUNCATE deal_observations,deal_transitions,sales_snapshots,web_recovery,web_account_audit,onboarding_progress,notifications,notification_preferences,followup_requests,email_templates,mail_tracking_config,mail_tracking_defaults,mail_tracking_events,mail_tracking,enrichment_config,provider_enrichment_jobs,enrichment_receipts,enrichment_usage,navigation_preferences,dashboard_preferences,web_users,web_invites,web_attempts,web_google_pending,update_status,records,user_profiles,mail_accounts,calendar_accounts,calendar_logs,web_provider_config,saved_views CASCADE')
     def request(self,path,data=None,cookie='',host='127.0.0.1:18766',origin='http://127.0.0.1:18766'):
         raw=json.dumps(data).encode() if data is not None else b''
         env=dict(PATH_INFO=path,REQUEST_METHOD='POST' if data is not None else 'GET',HTTP_HOST=host,HTTP_ORIGIN=origin,HTTP_COOKIE=cookie,CONTENT_TYPE='application/json',CONTENT_LENGTH=str(len(raw)),REMOTE_ADDR='127.0.0.1',**{'wsgi.input':io.BytesIO(raw)})
@@ -250,7 +250,8 @@ class WebDeployment(unittest.TestCase):
         with patch('updates.fetch_releases',return_value=[dict(tag_name='web-v0.2.0-beta.99',prerelease=True),dict(tag_name='v99.0.0')]):
             result=self.request('/api/updates/check',dict(channel='beta'),admin)
         self.assertEqual(result['status'],200);self.assertEqual(result['body']['installed']['edition'],'web');self.assertEqual(result['body']['latest']['version'],'0.2.0-beta.99')
-        self.assertEqual(self.request('/api/state',cookie=admin)['body']['release']['version'],'0.2.0-beta.5')
+        from app_version import SOURCE_VERSION
+        self.assertEqual(self.request('/api/state',cookie=admin)['body']['release']['version'],SOURCE_VERSION)
     def test_web_schema_guard_blocks_newer_database(self):
         from web_migrations import migrate
         with self.web.server.connect() as db:db.execute('UPDATE web_schema_version SET version=2 WHERE id=1')
@@ -347,3 +348,43 @@ class WebDeployment(unittest.TestCase):
         self.assertEqual(self.request('/api/onboarding',cookie=member)['status'],403)
         self.assertEqual(self.request('/api/onboarding',dict(action='hidden',enabled=True),member)['status'],403)
         self.assertTrue(next(s for s in self.request('/api/onboarding',cookie=admin)['body']['steps'] if s['id']=='team')['done'])
+
+    def test_account_management_and_recovery(self):
+        admin=self.setup_admin()
+        invite=self.request('/api/web/invite',dict(email='member@example.com',role='member'),admin)['body']
+        token=invite['url'].split('token=')[1]
+        self.request('/api/web/join',dict(email='member@example.com',name='Member',password='SamplePassword123!',token=token))
+        login=self.request('/api/web/login',dict(email='member@example.com',password='SamplePassword123!'))
+        member=next(v.split(';')[0] for k,v in login['headers'] if k=='Set-Cookie')
+        users=self.request('/api/web/users',cookie=admin)['body']['users'];person=next(u for u in users if u['role']=='member');boss=next(u for u in users if u['role']=='admin')
+        action=dict(action='active',id=person['id'],active=False)
+        self.assertEqual(self.request('/api/web/manage',action,member)['status'],403)
+        self.assertEqual(self.request('/api/web/manage',action,admin,origin='https://evil.example')['status'],403)
+        self.assertEqual(self.request('/api/web/manage',dict(action='active',id=boss['id'],active=False),admin)['status'],400)
+        self.assertEqual(self.request('/api/web/manage',action,admin)['status'],200)
+        self.assertEqual(self.request('/api/state',cookie=member)['status'],401)
+        self.assertEqual(self.request('/api/web/manage',dict(action='recovery',id=person['id']),admin)['status'],400)
+        self.assertEqual(self.request('/api/web/manage',dict(action='active',id=person['id'],active=True),admin)['status'],200)
+        recovery=self.request('/api/web/manage',dict(action='recovery',id=person['id']),admin)['body'];key=recovery['url'].split('token=')[1]
+        payload=dict(email=person['email'],token=key,password='NewSamplePassword123!')
+        self.assertEqual(self.request('/api/web/recover',dict(payload,email='other@example.com'))['status'],400)
+        self.assertEqual(self.request('/api/web/recover',payload)['status'],200)
+        self.assertEqual(self.request('/api/web/recover',payload)['status'],400)
+        self.assertEqual(self.request('/api/web/login',dict(email=person['email'],password='SamplePassword123!'))['status'],400)
+        self.assertEqual(self.request('/api/web/login',dict(email=person['email'],password=payload['password']))['status'],200)
+        self.assertEqual(self.request('/api/web/manage',dict(action='role',id=person['id'],role='admin'),admin)['status'],200)
+        listing=self.request('/api/web/users',cookie=admin)['body'];self.assertTrue(listing['audit']);self.assertTrue(all('password' not in u for u in listing['users']));self.assertNotIn(key,str(listing))
+        invite=self.request('/api/web/invite',dict(email='pending@example.com'),admin)['body'];pending=self.request('/api/web/users',cookie=admin)['body']['invitations'][0]
+        self.assertEqual(self.request('/api/web/manage',dict(action='revoke_invite',id=pending['id']),admin)['status'],200)
+        self.assertEqual(self.request('/api/web/join',dict(email='pending@example.com',name='Pending',password='SamplePassword123!',token=invite['url'].split('token=')[1]))['status'],400)
+
+    def test_operations_and_sales_boundaries(self):
+        self.assertEqual(self.request('/api/web/operations')['status'],401)
+        self.assertEqual(self.request('/api/sales/insights')['status'],401)
+        admin=self.setup_admin()
+        status=self.request('/api/web/operations',cookie=admin)
+        self.assertEqual(status['status'],200);self.assertEqual(status['body']['state'],'disabled')
+        result=self.request('/api/sales/insights',cookie=admin)
+        self.assertEqual(result['status'],200);self.assertEqual(result['body']['summary']['open'],0)
+        self.web.background_tick()
+        self.assertGreater(self.request('/api/web/operations',cookie=admin)['body']['last_success'],0)

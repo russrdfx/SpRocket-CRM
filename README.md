@@ -6,7 +6,7 @@ A free, MIT-licensed, configurable CRM foundation.
 
 ## Start your company's private web workspace
 
-**[Web v0.2.0-beta.6 release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/web-v0.2.0-beta.6)** · **[Getting started](GETTING_STARTED.md)** · **[Features and beta limits](WEB_RELEASE.md)**
+**[Web v0.2.0-beta.7 release](https://github.com/russrdfx/SpRocket-CRM/releases/tag/web-v0.2.0-beta.7)** · **[Getting started](GETTING_STARTED.md)** · **[Features and beta limits](WEB_RELEASE.md)**
 
 Each company runs its own installation and database, on its own domain or hosting-provider address. The software is free; hosting may cost money. This is a public beta, with Google sign-in, team invitations and separate Gmail/Calendar connections.
 
@@ -253,3 +253,13 @@ The development source adds personal alerts for tracked email opens, new incomin
 ## Web v0.2.0-beta.6 update
 
 Company list entries now open a dedicated details page. Owner dropdowns consolidate the signed-in person's name and connected email aliases while preserving existing assignments. Deal forms keep configuration shortcuts in Settings. Live [deal forecasts](FORECASTING.md), explicit pipeline stage outcomes, and a guided [company setup checklist](ONBOARDING.md) are included in web v0.2.0-beta.6.
+
+## Ticket workflow in web v0.2.0-beta.7
+
+Tickets use a standalone Ticket status (New, In progress, Waiting on customer, Closed) without requiring a pipeline. Ticket forms omit configuration shortcuts; status choices remain editable in Configuration → Properties. Existing ticket pipeline assignments are retained. Included in web v0.2.0-beta.7.
+
+Existing tickets now open a dedicated details page showing status, owner, properties, description, ticket activity and related records. Use **Edit ticket** to change its fields. Included in web v0.2.0-beta.7.
+
+## Web v0.2.0-beta.7 operations and reporting
+
+[Team administration](TEAM_ADMIN.md) adds role changes, deactivation/reactivation, invitation management, private recovery links and an account access log. [Host operations](HOST_OPERATIONS.md) adds worker health and verified backup receipts, plus a Docker host backup/restore-test tool. [Sales insights](SALES_INSIGHTS.md) adds observed stage age, lost reasons and daily aggregate snapshots. Sleeping hosts still need an always-on plan for continuous work; no hosting upgrade or backup schedule is enabled automatically. Apollo live verification still requires an API-enabled account.

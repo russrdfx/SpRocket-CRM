@@ -15,7 +15,7 @@ function ownerNames(current=''){
 }
 let state, page='dashboard', query='', board=false, pipeline='';
 const $=s=>document.querySelector(s), esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const uid=()=>crypto.randomUUID(), type=k=>state.settings.types.find(t=>t.id===k), pipe=id=>state.settings.pipelines.find(p=>p.id===id), stage=r=>r.kind==='contacts'?(r.lifecycle_stage||'—'):(pipe(r.pipeline)?.stages.find(s=>s.id===r.stage)?.name||'—');
+const uid=()=>crypto.randomUUID(), type=k=>state.settings.types.find(t=>t.id===k), pipe=id=>state.settings.pipelines.find(p=>p.id===id), stage=r=>r.kind==='contacts'?(r.lifecycle_stage||'—'):r.kind==='tickets'&&r.ticket_status?r.ticket_status:(pipe(r.pipeline)?.stages.find(s=>s.id===r.stage)?.name||'—');
 const money=n=>`${state.settings.currency} ${Number(n||0).toLocaleString(undefined,{maximumFractionDigits:2})}`;
 async function api(url,data){const r=await fetch(url,data?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}:{});const body=await r.json();if(r.status===401){location.href='/login';throw Error('Sign-in required')}if(!r.ok)throw Error(body.error||'Request failed');return body;}
 async function refresh(){state=await api('/api/state');state.auth=await api('/api/auth');state.mail=await api('/api/mail');render();}
@@ -28,9 +28,11 @@ function render(){
  if(page.startsWith('contact:'))return contactDetails(page.slice(8));
  if(page.startsWith('deal:'))return dealDetails(page.slice(5));
  if(page.startsWith('company:'))return companyDetails(page.slice(8));
+ if(page.startsWith('ticket:'))return ticketDetails(page.slice(7));
  if(page==='settings')return settingsView();
  if(page==='reports')return reportsView();
  if(page==='forecast')return forecastView();
+ if(page==='sales-insights')return salesInsightsView();
  if(page==='inbox')return mailView();
  if(page==='cleanup')return cleanupView();
  if(page==='tasks')return recordWorkspaceView();
@@ -48,7 +50,7 @@ function render(){
  $('#records').querySelectorAll('[data-id]').forEach(e=>e.onclick=()=>{if(!e.classList.contains('dragging'))openRecord(state.records.find(r=>r.id===e.dataset.id))});
  if(board)bindBoardDrag();
 }
-function listHTML(rows,typ){if(!rows.length)return '<div class="empty"><h2>Make room for your next opportunity</h2><p>Create your first record. Configure fields and pipelines to match how you work.</p></div>';return `<table><thead><tr><th>Name</th><th>Owner</th><th>${typ.id==='contacts'?'Lead stage':'Stage'}</th>${typ.fields.slice(0,3).map(f=>`<th>${esc(f.label)}</th>`).join('')}<th>Updated</th></tr></thead><tbody>${rows.map(r=>`<tr data-id="${esc(r.id)}"><td><b>${esc(r.name)}</b></td><td>${esc(r.owner||'Unassigned')}</td><td><span class="pill">${esc(stage(r))}</span></td>${typ.fields.slice(0,3).map(f=>`<td>${esc(r[f.key]??'—')}</td>`).join('')}<td>${new Date(r.updated).toLocaleDateString()}</td></tr>`).join('')}</tbody></table>`}
+function listHTML(rows,typ){const columns=typ.fields.filter(f=>typ.id!=='tickets'||f.key!=='ticket_status').slice(0,3);if(!rows.length&&typ.id==='tickets')return '<div class="empty"><h2>No tickets yet</h2><p>Create a ticket to track a customer question or issue.</p></div>';if(!rows.length)return '<div class="empty"><h2>Make room for your next opportunity</h2><p>Create your first record. Configure fields and pipelines to match how you work.</p></div>';return `<table><thead><tr><th>Name</th><th>Owner</th><th>${typ.id==='contacts'?'Lead stage':typ.id==='tickets'?'Status':'Stage'}</th>${columns.map(f=>`<th>${esc(f.label)}</th>`).join('')}<th>Updated</th></tr></thead><tbody>${rows.map(r=>`<tr data-id="${esc(r.id)}"><td><b>${esc(r.name)}</b></td><td>${esc(r.owner||'Unassigned')}</td><td><span class="pill">${esc(stage(r))}</span></td>${columns.map(f=>`<td>${esc(r[f.key]??'—')}</td>`).join('')}<td>${new Date(r.updated).toLocaleDateString()}</td></tr>`).join('')}</tbody></table>`}
 function boardHTML(rows,pipes){
  if(!pipes.length)return '<div class="empty"><h2>Your process starts here</h2><p>Create a pipeline in Configuration, then add as many stages as your process needs.</p></div>';
  const selected=pipeline?pipes.filter(p=>p.id===pipeline):pipes;
@@ -116,7 +118,7 @@ function configModal(title,html,onSave){const m=$('#modal');m.innerHTML=`<form i
 $('#modal').addEventListener('close',()=>{if(!$('#modal').open||!$('#creation-form'))$('#modal').classList.remove('record-drawer')});
 const originalRender=render; render=function(){originalRender();shell();};
 refresh().catch(e=>{$('#content').textContent='Unable to load workspace: '+e.message});
-function destination(name){const built={'Message Templates':'templates',Contacts:'contacts',Companies:'companies',Deals:'deals',Tickets:'tickets',Tasks:'tasks',Inbox:'inbox',Dashboards:'dashboard',Reports:'reports',Forecast:'forecast',Configuration:'settings','Data Model':'settings','Activity Feed':'dashboard','Data Quality':'cleanup'};go(built[name]||'module:'+name);}
+function destination(name){const built={'Message Templates':'templates',Contacts:'contacts',Companies:'companies',Deals:'deals',Tickets:'tickets',Tasks:'tasks',Inbox:'inbox',Dashboards:'dashboard',Reports:'reports',Forecast:'forecast','Sales Analytics':'sales-insights',Configuration:'settings','Data Model':'settings','Activity Feed':'dashboard','Data Quality':'cleanup'};go(built[name]||'module:'+name);}
 function shell(){
  const identity=state.auth?.user,name=state.auth?.profile?.name||identity?.name||(state.auth?.enabled?'Signed-in user':'Local demo user');
  const role=state.auth?.is_admin?(state.auth.enabled?'Account administrator':'Local administrator'):'Account member';
@@ -138,7 +140,7 @@ function plannedView(name){$('#content').innerHTML=`<div class="planned"><span c
 function reportsView(){const reports=[['Record counts by type',()=>state.settings.types.map(t=>`${t.name}: ${state.records.filter(r=>r.kind===t.id).length}`).join('\n')],['Pipeline value by stage',()=>state.settings.pipelines.map(p=>p.name+'\n'+p.stages.map(s=>s.name+': '+money(state.records.filter(r=>r.pipeline===p.id&&r.stage===s.id).reduce((n,r)=>n+Number(r.amount||0),0))).join('\n')).join('\n\n')||'Create a pipeline to report on its stages.'],['Activity totals',()=>['Note','Call','Email','Meeting'].map(t=>t+': '+state.activities.filter(a=>a.type===t).length).join('\n')]];
  $('#content').innerHTML=`<h1>My reports</h1><p>Live summaries from your workspace</p><div class="panel"><div class="report-row"><b>Report name</b><b>Source</b></div>${reports.map((r,i)=>`<div class="report-row"><button data-report="${i}">${r[0]}</button><span>Workspace records</span></div>`).join('')}</div>`;document.querySelectorAll('[data-report]').forEach(b=>b.onclick=()=>{const r=reports[Number(b.dataset.report)];const m=$('#modal');m.innerHTML=`<h2>${esc(r[0])}</h2><pre>${esc(r[1]())}</pre><div class="actions"><button id="report-close">Close</button></div>`;$('#report-close').onclick=()=>m.close();m.showModal()})
 }
-const settingGroups={'Your Preferences':['General','Notifications'],'Account Management':['Getting started','Account Defaults','Updates','Account & Billing','Audit Log','Users & Teams','Integrations','Tracking & Analytics','Privacy & Consent','Security','AI Access','Payments Account'],'Data Management':['Properties','Pipelines','Objects','Translations','Data Enrichment','Markets','Import & Export'],'Tools':['Notetaker','Meetings','Calling','Sales Workspace','Inboxes','Customer Success','Marketing','Forms','Content','Domains & URLs','Portals','Billing','Payments Checkout']};
+const settingGroups={'Your Preferences':['General','Notifications'],'Account Management':['Getting started','Background services','Account Defaults','Updates','Account & Billing','Audit Log','Users & Teams','Integrations','Tracking & Analytics','Privacy & Consent','Security','AI Access','Payments Account'],'Data Management':['Properties','Pipelines','Objects','Translations','Data Enrichment','Markets','Import & Export'],'Tools':['Notetaker','Meetings','Calling','Sales Workspace','Inboxes','Customer Success','Marketing','Forms','Content','Domains & URLs','Portals','Billing','Payments Checkout']};
 let settingsSection='Account Defaults';
 const oldSettingsView=settingsView;
 settingsView=function(){
@@ -154,7 +156,7 @@ settingsView=function(){
  body.innerHTML=`<h1>${esc(settingsSection)}</h1><div class="settings-tabs">${tabs.map((t,i)=>`<button class="${i===0?'selected':''}">${esc(t)}</button>`).join('')}</div><div class="panel"><span class="pill">Planned feature</span><h2 id="setting-tab-title">${esc(tabs[0])}</h2><p>This settings area is included in the product design. Its underlying feature is not implemented in this local version.</p><p>Workspace defaults, custom properties, objects and pipelines are available in the sidebar.</p></div>`;body.querySelectorAll('.settings-tabs button').forEach(b=>b.onclick=()=>{body.querySelectorAll('.settings-tabs button').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');$('#setting-tab-title').textContent=b.textContent});
 };
 
-function openRecord(r){if(r.kind==='contacts')go('contact:'+r.id);else if(r.kind==='deals')go('deal:'+r.id);else if(r.kind==='companies')go('company:'+r.id);else recordModal(r)}
+function openRecord(r){if(r.kind==='contacts')go('contact:'+r.id);else if(r.kind==='deals')go('deal:'+r.id);else if(r.kind==='companies')go('company:'+r.id);else if(r.kind==='tickets')go('ticket:'+r.id);else recordModal(r)}
 function dealDetails(id){
  const r=state.records.find(r=>r.id===id);if(!r){go('deals');return}
  const related=state.records.filter(x=>(r.links||[]).includes(x.id)||(x.links||[]).includes(id));
@@ -219,4 +221,17 @@ function companyDetails(id){
  $('#company-log').onsubmit=async e=>{e.preventDefault();try{await api('/api/activity',{record_id:id,type:e.target.elements.type.value,text:e.target.elements.text.value});await refresh();toast('Activity logged')}catch(error){$('#company-log-error').textContent=error.message}};
  if(typeof enrichButtons==='function')enrichButtons(r,$('#company-edit').parentElement);
  if(typeof addFollowAction==='function')addFollowAction(r,$('#company-edit').parentElement);
+}
+
+function ticketDetails(id){
+ const r=state.records.find(x=>x.id===id&&x.kind==='tickets');if(!r){go('tickets');return}
+ const related=state.records.filter(x=>x.id!==id&&((r.links||[]).includes(x.id)||(x.links||[]).includes(id)));
+ const activities=state.activities.filter(a=>a.record_id===id).sort((a,b)=>String(b.created).localeCompare(String(a.created)));
+ const fields=type('tickets').fields.filter(f=>f.key!=='ticket_status');
+ const association=t=>{const rows=related.filter(x=>x.kind===t.id);return `<section class="panel"><h3>${esc(t.name)} (${rows.length})</h3>${rows.map(x=>`<div class="association"><button data-ticket-related="${esc(x.id)}">${esc(x.name)}</button><small>${esc(x.email||x.domain||'')}</small></div>`).join('')||'<p class="muted">No related records.</p>'}</section>`};
+ $('#content').innerHTML=`<div class="deal-detail ticket-detail"><div><section class="panel record-summary"><button id="ticket-back">‹ Tickets</button><h2>${esc(r.name)}</h2><p><span class="pill">${esc(stage(r))}</span></p><div class="record-main-actions" role="group" aria-label="Ticket actions"><button id="ticket-edit">Edit ticket</button></div></section><section class="panel"><h3>About this ticket</h3><label>Status</label><p>${esc(stage(r))}</p><label>Owner</label><p>${esc(ownerLabel(r.owner)||'Unassigned')}</p>${fields.map(f=>`<label>${esc(f.label)}</label><p>${esc(r[f.key]??'—')||'—'}</p>`).join('')}<label>Last updated</label><p>${esc(new Date(r.updated).toLocaleString())}</p></section></div><div><section class="panel"><h3>Ticket description</h3><p class="ticket-description">${esc(r.notes||'No description added.')}</p></section><section class="panel"><h3>Ticket activity</h3><input id="ticket-activity-search" aria-label="Search ticket activities" placeholder="Search activities"><div id="ticket-timeline"></div></section><section class="panel"><h3>Log activity</h3><form id="ticket-log"><label>Activity type<select name="type"><option>Note</option><option>Email</option><option>Call</option><option>Meeting</option></select></label><label>Activity details<textarea name="text" required></textarea></label><p class="error" id="ticket-log-error" role="alert"></p><button>Save activity</button></form></section></div><div><section class="panel"><div class="heading"><h3>Related records</h3><button id="ticket-edit-links">Edit links</button></div></section>${state.settings.types.filter(t=>t.id!=='tickets'&&(['contacts','companies','deals','tasks'].includes(t.id)||related.some(x=>x.kind===t.id))).map(association).join('')}</div></div>`;
+ $('#ticket-back').onclick=()=>go('tickets');$('#ticket-edit').onclick=$('#ticket-edit-links').onclick=()=>recordModal(r);
+ document.querySelectorAll('[data-ticket-related]').forEach(b=>b.onclick=()=>openRecord(state.records.find(x=>x.id===b.dataset.ticketRelated)));
+ const timeline=()=>{const q=$('#ticket-activity-search').value.toLowerCase();$('#ticket-timeline').innerHTML=activities.filter(a=>JSON.stringify([a.text,a.email?.subject,a.email?.sender]).toLowerCase().includes(q)).map(a=>`<details class="contact-timeline-item" open><summary><b>${esc(a.type)}</b> · ${esc(new Date(a.created).toLocaleString())}</summary>${activityContent(a)}</details>`).join('')||'<p class="muted">No matching activity.</p>'};timeline();$('#ticket-activity-search').oninput=timeline;
+ $('#ticket-log').onsubmit=async e=>{e.preventDefault();try{await api('/api/activity',{record_id:id,type:e.target.elements.type.value,text:e.target.elements.text.value});await refresh();toast('Activity logged')}catch(error){$('#ticket-log-error').textContent=error.message}};
 }

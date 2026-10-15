@@ -28,7 +28,7 @@ Use a trusted copy of `deploy/upgrade.py` from this release with `--root` pointi
 Preview first:
 
 ```sh
-python3 deploy/upgrade.py --root /srv/sprocket --version web-v0.2.0-beta.6
+python3 deploy/upgrade.py --root /srv/sprocket --version web-v0.2.0-beta.7
 ```
 
 For the first upgrade from the original web beta, which had no version metadata, also supply `--from-version 0.2.0-beta.1` after confirming that this is what you installed. Never use that option to bypass a known incompatible version.
@@ -36,7 +36,7 @@ For the first upgrade from the original web beta, which had no version metadata,
 Approve after reviewing the target:
 
 ```sh
-python3 deploy/upgrade.py --root /srv/sprocket --version web-v0.2.0-beta.6 --approve
+python3 deploy/upgrade.py --root /srv/sprocket --version web-v0.2.0-beta.7 --approve
 ```
 
 The tool:
@@ -89,3 +89,7 @@ The database additions are additive. Existing records, pipelines, custom fields,
 Adds dedicated company details, cleaner deal forms, consolidated owner labels, live deal forecasting, explicit pipeline stage outcomes and an administrator setup checklist. See [FORECASTING.md](FORECASTING.md) and [ONBOARDING.md](ONBOARDING.md).
 
 Back up and verify restoration before deploying this commit to the existing service. Keep the same database and encryption key. The new setup progress table is additive; existing records, pipelines, properties, profiles and Google connections are retained. Older stages use their existing Won/Lost names until an administrator explicitly sets their outcome. Background jobs and provider integrations are not enabled automatically.
+
+## Web v0.2.0-beta.7
+
+Adds ticket statuses/details, team access management and recovery, host job health, Docker verified-backup tooling, and observed sales insights. New tables and property definitions are additive; existing records, ticket pipeline metadata, customized fields and provider connections remain. Retain the same database and encryption key and take a verified backup before updating the existing service. Existing deals start stage observation at this update; no earlier history is fabricated. Background jobs and backup schedules are not enabled automatically. See [TEAM_ADMIN.md](TEAM_ADMIN.md), [HOST_OPERATIONS.md](HOST_OPERATIONS.md) and [SALES_INSIGHTS.md](SALES_INSIGHTS.md).

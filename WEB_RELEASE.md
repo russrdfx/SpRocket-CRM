@@ -1,4 +1,4 @@
-# SpRocket CRM Web v0.2.0-beta.6
+# SpRocket CRM Web v0.2.0-beta.7
 
 Released October 14, 2026. This is the private web release; the separately packaged Mac preview remains v0.1.8.
 
@@ -23,7 +23,7 @@ New tables and property definitions are additive. Credentials, identities, recor
 
 - One company workspace per deployment; no public signup or automatic provisioning of separate companies.
 - Google Cloud app registration remains an administrator task. Provider testing/verification requirements still apply.
-- Password reset and user deactivation/role-management screens are not yet implemented.
+- Administrator-assisted recovery, role changes and deactivation are included. Self-service recovery email delivery and full record-change auditing remain future work.
 - Shared CRM activities are visible to workspace members. Personal caches and views are user-scoped; fine-grained record permissions are not included.
 - Render Free is temporary: app sleep, delayed background checks and a database expiring after 30 days. Use durable storage and backups for ongoing use.
 - One application process is supported. Provider connection/import continuation coordination across replicas is not implemented.
@@ -36,7 +36,7 @@ Apollo live lookups await an API-enabled account. ZoomInfo currently supports re
 
 ## Verification
 
-153 unique Python regression checks, 23 disposable PostgreSQL checks and 12 JavaScript suites pass. Browser checks use fictional SAMPLE data and cover navigation, enrichment review/save/undo, tracking expansion, follow-up scheduling/rescheduling/completion and template preview/application. Tests send no real mail. Production updates use a fresh backup whose isolated restore and encrypted Google configuration are verified before deploying.
+158 unique Python regression checks, 25 disposable PostgreSQL checks and 12 JavaScript suites pass. Browser checks use fictional SAMPLE data and cover navigation, enrichment review/save/undo, tracking expansion, follow-up scheduling/rescheduling/completion and template preview/application. Tests send no real mail. Production updates use a fresh backup whose isolated restore and encrypted Google configuration are verified before deploying.
 
 ## New in beta.5
 
@@ -47,3 +47,9 @@ A personal notification center covers tracked email opens, incoming synced email
 Company names open dedicated details pages with related records and activity. Deal forms no longer navigate away to configuration, and owner lists consolidate the signed-in user’s name and email aliases while preserving existing assignments. Live deal forecasts filter by period, owner and pipeline; stages support explicit Open/Won/Lost outcomes. Administrators have a guided setup checklist with saved personal progress and optional integrations. See [Forecasting](FORECASTING.md) and [Getting started checklist](ONBOARDING.md).
 
 The setup progress table is additive. This update preserves existing configuration, records, connections and encryption keys. It does not enable background jobs, providers or automatic email sending.
+
+## New in beta.7
+
+Tickets have independent status choices and details-first navigation. Web administrators manage roles, active status, invitations and one-time account recovery links, with an account access log. Host background health and optional verified backup receipts are visible. A Docker-host backup tool performs isolated restore tests; scheduling and off-site storage remain administrator tasks. Sales insights adds observed stage age, lost reasons and daily aggregate snapshots, with explicit baseline/history limits. See [TEAM_ADMIN.md](TEAM_ADMIN.md), [HOST_OPERATIONS.md](HOST_OPERATIONS.md) and [SALES_INSIGHTS.md](SALES_INSIGHTS.md).
+
+No paid service, background job setting, provider integration, backup schedule or outgoing email is enabled automatically. Apollo verification still needs an API-enabled account. Docker-host backup commands are regression-tested with simulated Docker execution; a real Docker-host drill remains required.
