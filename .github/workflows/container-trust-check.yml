@@ -1,0 +1,26 @@
+name: Container HTTPS trust
+
+on:
+  pull_request:
+    paths:
+      - deploy/Dockerfile
+      - deploy/verify_https_trust.py
+      - test_https_trust.py
+      - requirements*.txt
+      - .github/workflows/container-trust-check.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Test the trust verifier
+        run: python3 -m unittest test_https_trust
+      - name: Build a fresh image and verify outbound HTTPS trust
+        run: docker build --pull --no-cache --file deploy/Dockerfile --tag sprocket-ca-check .
